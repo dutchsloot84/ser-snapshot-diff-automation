@@ -13,12 +13,14 @@
 
 ## Installation
 
-Use a virtual environment or `pipx`:
+Use `pipx` for isolated installs, or fall back to a virtual environment:
 
 ```bash
-python -m pip install --upgrade pip setuptools wheel
+pipx install ser-diff
+# or from a checkout
 pipx install .
-# or
+
+python -m pip install --upgrade pip setuptools wheel
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .[dev]
@@ -39,6 +41,14 @@ pip install -e .[dev]
 ```
 
 ## Quick Start
+
+### Check your environment
+
+```bash
+ser-diff doctor
+```
+
+The doctor command prints version information, verifies XML parsing support, and ensures the default `reports/` directory is writable.
 
 ### Auto Mode (recommended)
 
@@ -139,10 +149,7 @@ CI runs linting, tests, and demo generation on Python 3.10 and 3.12. Reports are
 
 ## Changelog
 
-### Unreleased
-
-- Auto Mode now detects schemas, handles namespaces, and infers unique keys without crashing on duplicates.
-- CLI adds `--output-dir`, `--explain`, and `--strict`, printing a concise summary with friendlier zero-row diagnostics.
+See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 ## License
 

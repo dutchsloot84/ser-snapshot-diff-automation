@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+import platform
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -114,6 +116,89 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--version", action="version", version=f"ser-diff {__version__}")
 
     return parser.parse_args(argv)
+
+
+def _parse_doctor_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="ser-diff doctor",
+        description="Validate the local environment for running ser-diff.",
+    )
+    parser.add_argument(
+        "--reports-dir",
+        type=Path,
+        default=Path("reports"),
+        help="Directory ser-diff uses for report output (default: ./reports)",
+    )
+    return parser.parse_args(argv)
+
+
+def _check_reports_dir(path: Path) -> tuple[bool, str]:
+    raw = path.expanduser()
+    try:
+        target = raw.resolve()
+    except FileNotFoundError:  # pragma: no cover - resolve may fail on some platforms
+        target = (Path.cwd() / raw).resolve()
+
+    if target.exists() and not target.is_dir():
+        return False, f"{target} exists but is not a directory"
+
+    check_path = target if target.exists() else target.parent
+    if not str(check_path):
+        check_path = Path.cwd()
+
+    existing_parent = check_path
+    while not existing_parent.exists() and existing_parent != existing_parent.parent:
+        existing_parent = existing_parent.parent
+
+    writable = os.access(existing_parent, os.W_OK | os.X_OK)
+
+    if target.exists():
+        description = f"{target} (writable)" if writable else f"{target} (not writable)"
+        return writable, description
+
+    description = f"{target} (will be created)"
+    if not writable:
+        description = f"{target} (cannot create directory)"
+    return writable, description
+
+
+def _check_xml_parser() -> tuple[bool, str]:
+    try:
+        from xml.etree.ElementTree import iterparse
+    except Exception as exc:  # pragma: no cover - defensive guard
+        return False, f"xml.etree.ElementTree import failed: {exc}"
+
+    if not callable(iterparse):
+        return False, "xml.etree.ElementTree.iterparse unavailable"
+    return True, "xml.etree.ElementTree.iterparse available"
+
+
+def _run_doctor(argv: Sequence[str] | None = None) -> int:
+    args = _parse_doctor_args(argv)
+    checks: list[tuple[str, bool, str]] = []
+
+    checks.append(("ser-diff version", True, __version__))
+    checks.append(("Python version", True, platform.python_version()))
+    checks.append(("Operating system", True, platform.platform()))
+
+    reports_ok, reports_detail = _check_reports_dir(args.reports_dir)
+    checks.append(("Reports directory", reports_ok, reports_detail))
+
+    xml_ok, xml_detail = _check_xml_parser()
+    checks.append(("XML parser", xml_ok, xml_detail))
+
+    all_ok = all(status for _, status, _ in checks)
+
+    for label, passed, detail in checks:
+        status = "OK" if passed else "FAIL"
+        print(f"[{status}] {label}: {detail}")
+
+    if all_ok:
+        print("\nDoctor summary: All systems go.")
+        return EXIT_SUCCESS
+
+    print("\nDoctor summary: Issues detected. Please address the failed checks above.")
+    return EXIT_FAILURE
 
 
 def _ensure_fields_include_keys(
@@ -310,7 +395,12 @@ def _parse_expected_partners(value: str | None) -> list[str] | None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    args = _parse_args(argv)
+    argv_list = list(sys.argv[1:]) if argv is None else list(argv)
+
+    if argv_list and argv_list[0] == "doctor":
+        return _run_doctor(argv_list[1:])
+
+    args = _parse_args(argv_list)
 
     setup = _resolve_run_setup(args)
     config = setup.config
