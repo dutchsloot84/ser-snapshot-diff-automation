@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from . import __version__
 from .detect import ROW_INDEX_FIELD
 
 
@@ -369,6 +370,9 @@ def diff_files(
             {"role": "before", "path": str(before), "sha256": _compute_hash(before)},
             {"role": "after", "path": str(after), "sha256": _compute_hash(after)},
         ],
+        "before_file": str(before),
+        "after_file": str(after),
+        "tool_version": __version__,
     }
 
     return DiffResult(
@@ -381,26 +385,116 @@ def diff_files(
     )
 
 
-def write_reports(result: DiffResult, out_prefix: Path, *, output_format: str = "all") -> list[str]:
-    out_prefix.parent.mkdir(parents=True, exist_ok=True)
+def _build_canonical_payload(
+    result: DiffResult, thresholds: dict[str, object] | None = None
+) -> dict[str, object]:
+    thresholds = thresholds or {}
+    summary = result.summary
+    meta = result.meta
+
+    table_value = meta.get("table") or meta.get("schema") or "CUSTOM"
+    if isinstance(table_value, str) and table_value.upper() == "UNKNOWN":
+        table_value = "CUSTOM"
+
+    key_fields = meta.get("key_fields_used") or []
+    if not isinstance(key_fields, list):
+        key_fields = list(key_fields)
+
+    before_file = meta.get("before_file")
+    after_file = meta.get("after_file")
+    if not before_file or not after_file:
+        for entry in meta.get("input_files", []):
+            if entry.get("role") == "before" and not before_file:
+                before_file = entry.get("path")
+            if entry.get("role") == "after" and not after_file:
+                after_file = entry.get("path")
+
+    def _build_changes(record: dict[str, object]) -> dict[str, dict[str, str]]:
+        delta: dict[str, dict[str, str]] = {}
+        for field_name, change in record.get("changes", {}).items():
+            before_value = change.get("before", "")
+            after_value = change.get("after", "")
+            delta[field_name] = {"from": before_value, "to": after_value}
+        return delta
+
+    payload_meta: dict[str, object] = {
+        "generated_at": meta.get("generated_at"),
+        "tool_version": meta.get("tool_version", __version__),
+        "table": table_value,
+        "key_fields": key_fields,
+        "before_file": before_file,
+        "after_file": after_file,
+        "jira": meta.get("jira"),
+    }
+
+    if meta.get("schema"):
+        payload_meta["schema"] = meta.get("schema")
+    if meta.get("duplicates_resolved") is not None:
+        payload_meta["duplicates_resolved"] = meta.get("duplicates_resolved")
+    if meta.get("namespace_detected") is not None:
+        payload_meta["namespace_detected"] = meta.get("namespace_detected")
+    if meta.get("fields_used"):
+        payload_meta["fields_used"] = meta.get("fields_used")
+    if meta.get("key_fields_used"):
+        payload_meta["key_fields_used"] = meta.get("key_fields_used")
+
+    payload = {
+        "schema_version": "1.0",
+        "meta": payload_meta,
+        "summary": {
+            "added": summary.get("added", 0),
+            "removed": summary.get("removed", 0),
+            "changed": summary.get("updated", 0),
+            "total_before": summary.get("total_before", 0),
+            "total_after": summary.get("total_after", 0),
+            "unexpected_partners": list(result.unexpected_partners),
+            "thresholds": {
+                "max_added": thresholds.get("max_added"),
+                "max_removed": thresholds.get("max_removed"),
+                "violations": list(thresholds.get("violations", [])),
+            },
+        },
+        "added": [
+            {"key": record.get("key"), "record": record.get("after", {})}
+            for record in result.added
+        ],
+        "removed": [
+            {"key": record.get("key"), "record": record.get("before", {})}
+            for record in result.removed
+        ],
+        "changed": [
+            {
+                "key": record.get("key"),
+                "before": record.get("before", {}),
+                "after": record.get("after", {}),
+                "delta": _build_changes(record),
+            }
+            for record in result.updated
+        ],
+    }
+
+    return payload
+
+
+def write_reports(
+    result: DiffResult,
+    out_prefix: Path,
+    *,
+    output_format: str = "all",
+    thresholds: dict[str, object] | None = None,
+) -> list[str]:
+    out_prefix.mkdir(parents=True, exist_ok=True)
     produced: list[str] = []
 
-    if output_format in {"all", "json"}:
-        json_path = out_prefix.with_suffix(".json")
-        payload = {
-            "summary": result.summary,
-            "meta": result.meta,
-            "added": result.added,
-            "removed": result.removed,
-            "updated": result.updated,
-            "unexpected_partners": result.unexpected_partners,
-        }
-        with json_path.open("w", encoding="utf-8") as handle:
-            json.dump(payload, handle, indent=2)
-        produced.append(str(json_path))
+    json_path = out_prefix / "diff.json"
+    payload = _build_canonical_payload(result, thresholds)
+    with json_path.open("w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2)
+    produced.append(str(json_path))
 
     if output_format in {"all", "csv"}:
-        produced.extend(_write_csv_reports(result, out_prefix))
+        csv_prefix = out_prefix / out_prefix.name
+        produced.extend(_write_csv_reports(result, csv_prefix))
 
     result.output_files = produced
     return produced

@@ -14,7 +14,7 @@ from pathlib import Path
 from . import __version__
 from .config import LoadedConfig, load_config
 from .detect import ROW_INDEX_FIELD, detect_schema, infer_fields, infer_key_fields, probe_xml
-from .diff import DiffConfig, diff_files, write_reports
+from .diff import DiffConfig, DiffResult, diff_files, write_reports
 from .presets import get_preset
 
 EXIT_SUCCESS = 0
@@ -567,6 +567,43 @@ def _merge_cli_with_config(args: argparse.Namespace, loaded: LoadedConfig) -> ar
     return args
 
 
+def _evaluate_thresholds(
+    result: DiffResult,
+    *,
+    expected_partners: Sequence[str] | None,
+    max_added: int | None,
+    max_removed: int | None,
+) -> tuple[dict[str, object], list[str]]:
+    summary = result.summary
+    added = summary.get("added", 0)
+    removed = summary.get("removed", 0)
+
+    violations: list[str] = []
+    messages: list[str] = []
+
+    if expected_partners and result.unexpected_partners:
+        violations.append("UNEXPECTED_PARTNER")
+        messages.append(
+            "Unexpected partners detected: " + ", ".join(result.unexpected_partners)
+        )
+
+    if max_added is not None and added > max_added:
+        violations.append("MAX_ADDED")
+        messages.append(f"Added records {added} exceed threshold {max_added}")
+
+    if max_removed is not None and removed > max_removed:
+        violations.append("MAX_REMOVED")
+        messages.append(f"Removed records {removed} exceed threshold {max_removed}")
+
+    thresholds = {
+        "max_added": max_added,
+        "max_removed": max_removed,
+        "violations": violations,
+    }
+
+    return thresholds, messages
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     argv_list = list(sys.argv[1:]) if argv is None else list(argv)
 
@@ -611,7 +648,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"Error: {exc}", file=sys.stderr)
         return EXIT_FAILURE
 
-    produced_paths = write_reports(result, out_prefix, output_format=args.format)
+    thresholds, threshold_messages = _evaluate_thresholds(
+        result,
+        expected_partners=expected_partners,
+        max_added=args.max_added,
+        max_removed=args.max_removed,
+    )
+
+    produced_paths = write_reports(
+        result,
+        out_prefix,
+        output_format=args.format,
+        thresholds=thresholds,
+    )
 
     strict_issues: list[str] = []
 
@@ -626,18 +675,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         strict_issues.extend(setup.warnings)
 
     exit_code = EXIT_SUCCESS
-    failures: list[str] = []
-
-    if expected_partners and result.unexpected_partners:
-        failures.append("Unexpected partners detected: " + ", ".join(result.unexpected_partners))
-
-    added = result.summary.get("added", 0)
-    removed = result.summary.get("removed", 0)
-
-    if args.max_added is not None and added > args.max_added:
-        failures.append(f"Added records {added} exceed threshold {args.max_added}")
-    if args.max_removed is not None and removed > args.max_removed:
-        failures.append(f"Removed records {removed} exceed threshold {args.max_removed}")
+    failures: list[str] = list(threshold_messages)
 
     if failures:
         message = "; ".join(failures)

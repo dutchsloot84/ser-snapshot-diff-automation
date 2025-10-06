@@ -151,6 +151,31 @@ With a populated config you can run the short form:
 ser-diff --before BEFORE.xml --after AFTER.xml
 ```
 
+## Programmatic use
+
+Every run writes a canonical `diff.json` (schema version `1.0`) alongside CSV exports in
+`<output-dir>/<out-prefix>/`. Use standard tools to automate validations:
+
+```bash
+# Show the change summary with jq
+jq '.summary' reports/MOB-126703/diff.json
+```
+
+```python
+# Inspect threshold violations in Python
+import json
+from pathlib import Path
+
+payload = json.loads(Path("reports/MOB-126703/diff.json").read_text())
+print(payload["summary"]["thresholds"]["violations"])
+```
+
+```powershell
+# List added keys in PowerShell
+$report = Get-Content reports/MOB-126703/diff.json -Raw | ConvertFrom-Json
+$report.added | ForEach-Object { $_.key }
+```
+
 ## SOP Snippet (Standard Change)
 
 1. Export BEFORE (SER) from PolicyCenter.

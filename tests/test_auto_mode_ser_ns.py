@@ -30,7 +30,8 @@ def test_auto_mode_handles_namespaced_ser(tmp_path: Path, capsys) -> None:
     assert exit_code == cli.EXIT_SUCCESS
     assert "Diff: added=1" in captured.out
 
-    report = tmp_path / "auto-ser.json"
+    report_dir = tmp_path / "auto-ser"
+    report = report_dir / "diff.json"
     data = json.loads(report.read_text(encoding="utf-8"))
     assert data["summary"]["total_before"] == 2
     assert data["summary"]["total_after"] == 2
