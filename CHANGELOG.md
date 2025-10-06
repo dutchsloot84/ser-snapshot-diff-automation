@@ -9,3 +9,5 @@ All notable changes to this project will be documented in this file.
 - pipx-first installation guidance and installation doctor documentation.
 - Release automation to build and upload single-file binaries on tagged releases.
 - `docs/install.md` with PyInstaller build steps for macOS, Linux, and Windows.
+- Repo-local configuration loader with `.serdiff.toml` precedence (TOML > YAML > JSON) and a `ser-diff init` generator.
+- CLI now honours config defaults while keeping CLI flags authoritative and supports `--no-fail-on-unexpected`/`--no-strip-ns` overrides.

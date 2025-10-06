@@ -107,6 +107,50 @@ ser-diff \
   --out-prefix custom_diff
 ```
 
+## Config
+
+`ser-diff` automatically loads configuration from `.serdiff.toml` in your working directory
+(`.serdiff.yaml`/`.serdiff.json` act as fallbacks). Generate a commented template with:
+
+```bash
+ser-diff init
+```
+
+Every CLI flag still takes priority over the config file. A typical TOML configuration looks
+like this:
+
+```toml
+[jira]
+ticket = "ENG-123"
+
+[io]
+output_dir = "reports"
+out_prefix = "MOB-126703"
+
+[guards]
+expected_partners = ["PartnerOne", "PartnerTwo"]
+max_added = 0
+max_removed = 0
+fail_on_unexpected = true
+
+[preset]
+mode = "SER"
+
+## Uncomment the section below when using custom record definitions.
+#[custom]
+#record_path = ".//CustomRecord"
+#record_localname = "CustomRecord"
+#keys = ["PublicID", "Partner"]
+#fields = ["PublicID", "Partner", "State", "Factor"]
+#strip_ns = false
+```
+
+With a populated config you can run the short form:
+
+```bash
+ser-diff --before BEFORE.xml --after AFTER.xml
+```
+
 ## SOP Snippet (Standard Change)
 
 1. Export BEFORE (SER) from PolicyCenter.

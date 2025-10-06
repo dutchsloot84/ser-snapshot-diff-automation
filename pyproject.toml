@@ -10,7 +10,10 @@ authors = [{name = "SER Snapshot Diff Automation", email = "eng@example.com"}]
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+  "PyYAML>=6.0",
+  "tomli>=2.0; python_version < '3.11'",
+]
 
 [project.optional-dependencies]
 dev = [
