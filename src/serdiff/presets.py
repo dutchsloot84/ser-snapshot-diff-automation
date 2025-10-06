@@ -18,19 +18,31 @@ def _build_presets() -> dict[str, Preset]:
     presets: dict[str, Preset] = {}
 
     ser_config = DiffConfig(
-        record_path=".//Rate",
+        record_path=".//*",
+        record_localname="CASSimpleExpsRateTbl_Ext",
         fields=[
-            "PublicID",
-            "Partner",
-            "State",
-            "AgeBand",
+            "AccountNumber",
+            "CovFactor",
             "EffectiveDate",
             "ExpirationDate",
-            "Factor",
+            "ExposureType",
+            "RateEffectiveDate",
+            "RatingExposureType",
+            "Segment",
+            "State",
+            "Value",
         ],
         key_fields=[
-            ["PublicID"],
-            ["Partner", "State", "AgeBand", "EffectiveDate"],
+            [
+                "AccountNumber",
+                "CovFactor",
+                "EffectiveDate",
+                "ExpirationDate",
+                "RateEffectiveDate",
+                "RatingExposureType",
+                "Segment",
+                "State",
+            ]
         ],
         table_name="SER",
     )
@@ -42,6 +54,7 @@ def _build_presets() -> dict[str, Preset]:
 
     exposure_config = DiffConfig(
         record_path=".//ExposureType",
+        record_localname="ExposureType",
         fields=[
             "PublicID",
             "ExposureCode",

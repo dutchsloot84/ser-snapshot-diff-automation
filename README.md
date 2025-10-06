@@ -57,6 +57,30 @@ ser-diff \
   --jira MOBPXD-1213
 ```
 
+### PolicyCenter SER (CASSimpleExpsRateTbl_Ext)
+
+```bash
+ser-diff \
+  --before exports/Prod_BEFORE_Import_CASSimpleExpsRateTbl_Ext_27198Entries.xml \
+  --after  exports/Prod_AFTER_Import_CASSimpleExpsRateTbl_27214Entries.xml \
+  --table SER \
+  --out-prefix reports/MOB-126703_Prod_SER_diff \
+  --jira MOB-126703
+
+# If you still see 0 rows (namespaces), try:
+ser-diff \
+  --before exports/Prod_BEFORE_Import_CASSimpleExpsRateTbl_Ext_27198Entries.xml \
+  --after  exports/Prod_AFTER_Import_CASSimpleExpsRateTbl_27214Entries.xml \
+  --record-path .//* \
+  --record-localname CASSimpleExpsRateTbl_Ext \
+  --key AccountNumber --key CovFactor --key EffectiveDate --key ExpirationDate \
+  --key RateEffectiveDate --key RatingExposureType --key Segment --key State \
+  --fields AccountNumber,CovFactor,EffectiveDate,ExpirationDate,ExposureType,RateEffectiveDate,RatingExposureType,Segment,State,Value \
+  --out-prefix reports/MOB-126703_Prod_SER_diff \
+  --jira MOB-126703 \
+  --strip-ns
+```
+
 ### Custom tables
 
 ```bash

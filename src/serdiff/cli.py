@@ -31,6 +31,16 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     table_group.add_argument("--record-path", help="XPath to the repeating record elements")
 
     parser.add_argument(
+        "--record-localname",
+        help="Localname of the record element (ignores XML namespaces)",
+    )
+    parser.add_argument(
+        "--strip-ns",
+        action="store_true",
+        help="Strip XML namespaces during parsing (useful for default namespaces)",
+    )
+
+    parser.add_argument(
         "--key",
         action="append",
         dest="keys",
@@ -84,6 +94,7 @@ def _resolve_config(args: argparse.Namespace) -> DiffConfig:
         record_path = config.record_path
         key_fields = list(config.key_fields)
         table_name = config.table_name
+        record_localname = config.record_localname
     else:
         if not args.record_path:
             raise SystemExit("--record-path is required when --table is not provided")
@@ -92,6 +103,10 @@ def _resolve_config(args: argparse.Namespace) -> DiffConfig:
         record_path = args.record_path
         key_fields = [list(args.keys)]
         fields = list(args.keys)
+        record_localname = args.record_localname
+
+    if args.record_localname:
+        record_localname = args.record_localname
 
     if args.fields:
         fields = tuple(field.strip() for field in args.fields.split(",") if field.strip())
@@ -110,6 +125,7 @@ def _resolve_config(args: argparse.Namespace) -> DiffConfig:
         fields=fields,
         key_fields=[tuple(group) for group in key_fields],
         table_name=table_name,
+        record_localname=record_localname,
     )
 
 
@@ -141,12 +157,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             config,
             jira=args.jira,
             expected_partners=expected_partners,
+            record_localname=args.record_localname,
+            strip_namespaces=args.strip_ns,
         )
     except Exception as exc:  # pragma: no cover - CLI guardrail
         print(f"Error: {exc}", file=sys.stderr)
         return EXIT_FAILURE
 
     write_reports(result, out_prefix, output_format=args.format)
+
+    if result.summary.get("total_before", 0) == 0:
+        _print_zero_row_hint("BEFORE", config.record_localname or args.record_localname)
+    if result.summary.get("total_after", 0) == 0:
+        _print_zero_row_hint("AFTER", config.record_localname or args.record_localname)
 
     exit_code = EXIT_SUCCESS
     failures: list[str] = []
@@ -187,6 +210,17 @@ def _print_outputs(paths: Iterable[str]) -> None:
     print("\nGenerated reports:")
     for path in paths:
         print(f"  - {path}")
+
+
+def _print_zero_row_hint(which: str, record_localname: str | None) -> None:
+    expected_localname = record_localname or "CASSimpleExpsRateTbl_Ext"
+    print(
+        f"\nNo records parsed from {which}. Common causes:\n"
+        f" - Namespaces in the XML (try --strip-ns or --record-localname {expected_localname})\n"
+        " - Wrong record element (for SER use --table SER, which expects CASSimpleExpsRateTbl_Ext)\n"
+        " - Record path filtering too strict (try --record-path .//* with --record-localname)",
+        file=sys.stderr,
+    )
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -12,9 +12,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-def _strip_namespace(tag: str) -> str:
+def _local_name(tag: str | None) -> str:
+    if not tag:
+        return ""
     if "}" in tag:
-        return tag.split("}", 1)[1]
+        tag = tag.split("}", 1)[1]
+    if ":" in tag:
+        tag = tag.split(":", 1)[1]
     return tag
 
 
@@ -30,6 +34,7 @@ class DiffConfig:
     fields: Sequence[str]
     key_fields: Sequence[Sequence[str]]
     table_name: str | None = None
+    record_localname: str | None = None
 
     def __post_init__(self) -> None:
         if not self.fields:
@@ -56,8 +61,11 @@ class DuplicateKeyError(RuntimeError):
 def _iter_records(
     xml_path: Path,
     record_path: str,
+    record_localname: str | None,
     fields: Sequence[str],
     key_sets: Sequence[Sequence[str]],
+    *,
+    strip_ns: bool = False,
 ) -> Iterator[tuple[str, Sequence[str], dict[str, str]]]:
     """Yield records extracted from the XML file.
 
@@ -71,31 +79,35 @@ def _iter_records(
     if not path_parts:
         raise ValueError(f"Invalid record_path: {record_path}")
 
-    target_tag = path_parts[-1]
+    target_localname = record_localname or _local_name(path_parts[-1])
 
-    def matches_path(elem: ET.Element) -> bool:
-        return _strip_namespace(elem.tag) == target_tag
+    events = ("start", "end") if strip_ns else ("end",)
+    context = ET.iterparse(str(xml_path), events=events)
 
-    context = ET.iterparse(str(xml_path), events=("end",))
-    for _event, elem in context:
-        if not matches_path(elem):
+    for event, elem in context:
+        if strip_ns and event == "start":
+            elem.tag = _local_name(elem.tag)
             continue
+
+        if event != "end":
+            continue
+
+        if _local_name(elem.tag) != target_localname:
+            continue
+
+        values = {}
+        for child in elem:
+            child_name = _local_name(child.tag)
+            if child_name not in values:
+                values[child_name] = _normalise_text(child.text)
 
         record: dict[str, str] = {}
         for field_name in fields:
-            record[field_name] = _normalise_text(_find_child_text(elem, field_name))
+            record[field_name] = values.get(field_name, "")
 
         key_string, key_fields_used = _derive_key(record, key_sets)
         yield key_string, key_fields_used, record
         elem.clear()
-
-
-def _find_child_text(elem: ET.Element, child_name: str) -> str | None:
-    target = child_name.lower()
-    for child in elem:
-        if _strip_namespace(child.tag).lower() == target:
-            return child.text
-    return None
 
 
 def _derive_key(
@@ -135,11 +147,20 @@ def diff_files(
     *,
     jira: str | None = None,
     expected_partners: Sequence[str] | None = None,
+    record_localname: str | None = None,
+    strip_namespaces: bool = False,
 ) -> DiffResult:
     before_records: dict[str, dict[str, str]] = {}
     before_keys_used: dict[str, Sequence[str]] = {}
+    effective_localname = record_localname or config.record_localname
+
     for key, key_fields_used, record in _iter_records(
-        before, config.record_path, config.fields, config.key_fields
+        before,
+        config.record_path,
+        effective_localname,
+        config.fields,
+        config.key_fields,
+        strip_ns=strip_namespaces,
     ):
         if key in before_records:
             raise DuplicateKeyError(f"Duplicate key {key!r} found in BEFORE file {before}")
@@ -149,7 +170,12 @@ def diff_files(
     after_records: dict[str, dict[str, str]] = {}
     after_keys_used: dict[str, Sequence[str]] = {}
     for key, key_fields_used, record in _iter_records(
-        after, config.record_path, config.fields, config.key_fields
+        after,
+        config.record_path,
+        effective_localname,
+        config.fields,
+        config.key_fields,
+        strip_ns=strip_namespaces,
     ):
         if key in after_records:
             raise DuplicateKeyError(f"Duplicate key {key!r} found in AFTER file {after}")
@@ -235,6 +261,7 @@ def diff_files(
             "sha256": _compute_hash(after),
         },
         "record_path": config.record_path,
+        "record_localname": effective_localname,
         "fields": list(config.fields),
         "key_fields": [list(keys) for keys in config.key_fields],
         "partners_detected": unique_partners,
