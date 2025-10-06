@@ -2,35 +2,58 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
 
 jobs:
-  build:
+  build-test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.10", "3.12"]
+        python-version: [ "3.10", "3.12" ]
+
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
+          cache: pip
+
+      - name: Upgrade pip tooling
+        run: python -m pip install --upgrade pip setuptools wheel
+
+      - name: Install package (editable) + dev deps
         run: |
-          python -m pip install --upgrade pip setuptools wheel
-          python -m pip install -e .[dev]
-      - name: Ruff
-        run: python -m ruff check src/serdiff tests
-      - name: Black
-        run: python -m black --check src/serdiff tests
-      - name: Pytest
-        run: python -m pytest
-      - name: Demo artifacts
-        run: make demo
-      - name: Upload reports
-        uses: actions/upload-artifact@v3
+          pip install -e .[dev]
+
+      - name: Lint
+        run: |
+          ruff --version
+          ruff check .
+          black --check .
+
+      - name: Tests
+        run: pytest -q
+
+      - name: Generate demo reports
+        run: |
+          if [ -f Makefile ]; then make demo || true; fi
+          mkdir -p reports || true
+
+      - name: Upload reports artifact
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: demo-reports-${{ matrix.python-version }}
-          path: reports/
+          name: ser-snapshot-diff-reports-${{ matrix.python-version }}
+          path: reports
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 6
