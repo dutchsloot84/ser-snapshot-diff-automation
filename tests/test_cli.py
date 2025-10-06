@@ -75,8 +75,10 @@ def test_cli_threshold_failure(tmp_path: Path) -> None:
             "--max-added",
             "0",
             "--fail-on-unexpected",
+            "--output-dir",
+            str(tmp_path),
             "--out-prefix",
-            str(tmp_path / "report"),
+            "report",
         ]
     )
 

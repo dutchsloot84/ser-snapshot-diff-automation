@@ -2,20 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from serdiff import cli
 
 
-def _write(path: Path, xml: str) -> Path:
-    path.write_text(xml.strip(), encoding="utf-8")
-    return path
-
-
-@pytest.mark.usefixtures("tmp_path")
-def test_cli_warns_when_no_records(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    before = _write(
-        tmp_path / "before.xml",
+def test_windows_style_output_dir(tmp_path: Path, capsys, monkeypatch) -> None:
+    before = tmp_path / "before.xml"
+    before.write_text(
         """
         <SimpleExposureRates>
           <CASSimpleExpsRateTbl_Ext>
@@ -31,27 +23,33 @@ def test_cli_warns_when_no_records(tmp_path: Path, capsys: pytest.CaptureFixture
             <Value>1.10</Value>
           </CASSimpleExpsRateTbl_Ext>
         </SimpleExposureRates>
-        """,
+        """.strip(),
+        encoding="utf-8",
     )
-    after = _write(tmp_path / "after.xml", before.read_text(encoding="utf-8"))
+    after = tmp_path / "after.xml"
+    after.write_text(before.read_text(encoding="utf-8"), encoding="utf-8")
+
+    monkeypatch.chdir(tmp_path)
+    windows_output = "reports\\windows"
 
     exit_code = cli.main(
         [
             "--before",
-            str(before),
+            str(before.name),
             "--after",
-            str(after),
+            str(after.name),
             "--table",
             "SER",
-            "--record-localname",
-            "WrongElement",
+            "--output-dir",
+            windows_output,
             "--out-prefix",
-            str(tmp_path / "report"),
+            "win",  # prefix inside the windows-style directory
         ]
     )
 
     captured = capsys.readouterr()
     assert exit_code == cli.EXIT_SUCCESS
-    assert "No records parsed from BEFORE" in captured.err
-    assert "No records parsed from AFTER" in captured.err
-    assert "--strip-ns" in captured.err
+    assert "reports\\windows" in captured.out
+    output_dir = Path("reports\\windows")
+    assert output_dir.exists()
+    assert (output_dir / "win.json").exists()

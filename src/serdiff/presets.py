@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .detect import ROW_INDEX_FIELD
 from .diff import DiffConfig
 
 
@@ -23,28 +24,56 @@ def _build_presets() -> dict[str, Preset]:
         fields=[
             "AccountNumber",
             "CovFactor",
-            "EffectiveDate",
-            "ExpirationDate",
             "ExposureType",
             "RateEffectiveDate",
             "RatingExposureType",
             "Segment",
             "State",
+            "EffectiveDate",
+            "ExpirationDate",
             "Value",
         ],
-        key_fields=[
-            [
+        key_fields=("PublicID",),
+        composite_fallback=(
+            (
                 "AccountNumber",
                 "CovFactor",
-                "EffectiveDate",
-                "ExpirationDate",
-                "RateEffectiveDate",
+                "ExposureType",
                 "RatingExposureType",
                 "Segment",
                 "State",
-            ]
-        ],
+                "EffectiveDate",
+                "RateEffectiveDate",
+                "ExpirationDate",
+            ),
+            (
+                "AccountNumber",
+                "CovFactor",
+                "ExposureType",
+                "RatingExposureType",
+                "Segment",
+                "State",
+                "EffectiveDate",
+                "RateEffectiveDate",
+                "ExpirationDate",
+                "Value",
+            ),
+            (
+                "AccountNumber",
+                "CovFactor",
+                "ExposureType",
+                "RatingExposureType",
+                "Segment",
+                "State",
+                "EffectiveDate",
+                "RateEffectiveDate",
+                "ExpirationDate",
+                "Value",
+                ROW_INDEX_FIELD,
+            ),
+        ),
         table_name="SER",
+        schema="SER",
     )
     presets["SER"] = Preset(
         name="SER",
@@ -63,8 +92,10 @@ def _build_presets() -> dict[str, Preset]:
             "EffectiveDate",
             "ExpirationDate",
         ],
-        key_fields=[["PublicID"]],
+        key_fields=("PublicID",),
+        composite_fallback=(("PublicID", ROW_INDEX_FIELD),),
         table_name="EXPOSURE",
+        schema="EXPOSURE",
     )
     presets["EXPOSURE"] = Preset(
         name="EXPOSURE",

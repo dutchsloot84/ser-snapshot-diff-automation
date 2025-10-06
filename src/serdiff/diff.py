@@ -6,10 +6,12 @@ import csv
 import hashlib
 import json
 import xml.etree.ElementTree as ET
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+
+from .detect import ROW_INDEX_FIELD
 
 
 def _local_name(tag: str | None) -> str:
@@ -32,15 +34,25 @@ def _normalise_text(value: str | None) -> str:
 class DiffConfig:
     record_path: str
     fields: Sequence[str]
-    key_fields: Sequence[Sequence[str]]
+    key_fields: Sequence[str]
     table_name: str | None = None
     record_localname: str | None = None
+    composite_fallback: Sequence[Sequence[str]] = ()
+    schema: str = "UNKNOWN"
 
     def __post_init__(self) -> None:
         if not self.fields:
             raise ValueError("fields must not be empty")
         if not self.key_fields:
             raise ValueError("key_fields must not be empty")
+
+    def candidate_keys(self) -> list[list[str]]:
+        candidates: list[list[str]] = [list(self.key_fields)]
+        for fallback in self.composite_fallback:
+            candidates.append(list(fallback))
+        if not candidates:
+            candidates.append([ROW_INDEX_FIELD])
+        return candidates
 
 
 @dataclass
@@ -58,69 +70,65 @@ class DuplicateKeyError(RuntimeError):
     """Raised when duplicate keys are encountered within the same dataset."""
 
 
-def _iter_records(
+def _ensure_field_coverage(
+    fields: Sequence[str], key_candidates: Sequence[Sequence[str]]
+) -> list[str]:
+    ordered: list[str] = list(fields)
+    for candidate in key_candidates:
+        for field_name in candidate:
+            if field_name == ROW_INDEX_FIELD:
+                continue
+            if field_name not in ordered:
+                ordered.append(field_name)
+    return ordered
+
+
+def _parse_records(
     xml_path: Path,
-    record_path: str,
     record_localname: str | None,
     fields: Sequence[str],
-    key_sets: Sequence[Sequence[str]],
     *,
     strip_ns: bool = False,
-) -> Iterator[tuple[str, Sequence[str], dict[str, str]]]:
-    """Yield records extracted from the XML file.
-
-    Yields tuples of (key_string, key_fields_used, record_dict).
-    """
-
-    if record_path.endswith("//"):
-        raise ValueError("record_path must not end with //")
-
-    path_parts = [part for part in record_path.split("/") if part and part != "."]
-    if not path_parts:
-        raise ValueError(f"Invalid record_path: {record_path}")
-
-    target_localname = record_localname or _local_name(path_parts[-1])
+) -> tuple[list[dict[str, str]], bool]:
+    records: list[dict[str, str]] = []
+    namespace_detected = False
 
     events = ("start", "end") if strip_ns else ("end",)
     context = ET.iterparse(str(xml_path), events=events)
 
     for event, elem in context:
         if strip_ns and event == "start":
+            if "}" in elem.tag or ":" in elem.tag:
+                namespace_detected = True
             elem.tag = _local_name(elem.tag)
             continue
 
         if event != "end":
             continue
 
-        if _local_name(elem.tag) != target_localname:
+        if "}" in elem.tag or ":" in elem.tag:
+            namespace_detected = True
+
+        if record_localname and _local_name(elem.tag) != record_localname:
             continue
 
-        values = {}
+        values: dict[str, str] = {}
         for child in elem:
+            if "}" in child.tag or ":" in child.tag:
+                namespace_detected = True
             child_name = _local_name(child.tag)
             if child_name not in values:
                 values[child_name] = _normalise_text(child.text)
 
-        record: dict[str, str] = {}
-        for field_name in fields:
-            record[field_name] = values.get(field_name, "")
+        if not values:
+            elem.clear()
+            continue
 
-        key_string, key_fields_used = _derive_key(record, key_sets)
-        yield key_string, key_fields_used, record
+        record = {field_name: values.get(field_name, "") for field_name in fields}
+        records.append(record)
         elem.clear()
 
-
-def _derive_key(
-    record: dict[str, str], key_sets: Sequence[Sequence[str]]
-) -> tuple[str, Sequence[str]]:
-    for key_fields in key_sets:
-        values = [record.get(field, "") for field in key_fields]
-        if any(value for value in values):
-            key_string = "|".join(
-                f"{field}={value}" for field, value in zip(key_fields, values, strict=True)
-            )
-            return key_string, key_fields
-    raise ValueError("Unable to derive key for record; all key fields are empty")
+    return records, namespace_detected
 
 
 def _compute_hash(path: Path) -> str:
@@ -140,6 +148,114 @@ def _collect_partners(records: Iterable[dict[str, str]]) -> list[str]:
     return partners
 
 
+def _make_key(
+    record: dict[str, str],
+    key_fields: Sequence[str],
+    counters: dict[tuple[tuple[str, str], ...], int],
+) -> str:
+    base_components = tuple(
+        (field, record.get(field, "")) for field in key_fields if field != ROW_INDEX_FIELD
+    )
+    row_value = ""
+    if ROW_INDEX_FIELD in key_fields:
+        count = counters.get(base_components, 0) + 1
+        counters[base_components] = count
+        row_value = str(count)
+
+    parts: list[str] = []
+    for key_field in key_fields:
+        if key_field == ROW_INDEX_FIELD:
+            parts.append(f"{ROW_INDEX_FIELD}={row_value}")
+        else:
+            parts.append(f"{key_field}={record.get(key_field, '')}")
+    return "|".join(parts)
+
+
+def _has_duplicates(records: Sequence[dict[str, str]], key_fields: Sequence[str]) -> bool:
+    seen: set[str] = set()
+    counters: dict[tuple[tuple[str, str], ...], int] = {}
+    for record in records:
+        key = _make_key(record, key_fields, counters)
+        if key in seen:
+            return True
+        seen.add(key)
+    return False
+
+
+def _describe_key_transition(
+    candidate: Sequence[str], primary_candidate: Sequence[str], index: int
+) -> str:
+    if index == 0:
+        return ""
+
+    primary_set = set(primary_candidate)
+    new_fields = [field for field in candidate if field not in primary_set]
+    if not new_fields:
+        return "used fallback key"
+
+    if new_fields == [ROW_INDEX_FIELD]:
+        return "appended row index for uniqueness"
+
+    if ROW_INDEX_FIELD in new_fields:
+        extras = [field for field in new_fields if field != ROW_INDEX_FIELD]
+        if extras:
+            return f"added {', '.join(extras)} and row index to key"
+        return "appended row index for uniqueness"
+
+    return "added " + ", ".join(new_fields) + " to key"
+
+
+def _select_candidate(
+    datasets: Sequence[Sequence[dict[str, str]]],
+    candidates: Sequence[Sequence[str]],
+) -> tuple[list[str], dict[str, object]]:
+    if not candidates:
+        candidates = ([ROW_INDEX_FIELD],)
+
+    primary = candidates[0]
+    for index, candidate in enumerate(candidates):
+        if all(not _has_duplicates(records, candidate) for records in datasets):
+            has_values = any(
+                any(
+                    record.get(field_name, "")
+                    for field_name in candidate
+                    if field_name != ROW_INDEX_FIELD
+                )
+                for records in datasets
+                for record in records
+            )
+            if not has_values:
+                continue
+            details = _describe_key_transition(candidate, primary, index)
+            info: dict[str, object] = {
+                "resolved": index > 0,
+                "details": details or None,
+            }
+            return list(candidate), info
+
+    fallback = list(primary)
+    if ROW_INDEX_FIELD not in fallback:
+        fallback.append(ROW_INDEX_FIELD)
+    info = {
+        "resolved": True,
+        "details": _describe_key_transition(fallback, primary, len(candidates))
+        or "appended row index for uniqueness",
+    }
+    return fallback, info
+
+
+def _build_record_map(
+    records: Sequence[dict[str, str]],
+    key_fields: Sequence[str],
+) -> dict[str, dict[str, str]]:
+    mapping: dict[str, dict[str, str]] = {}
+    counters: dict[tuple[tuple[str, str], ...], int] = {}
+    for record in records:
+        key = _make_key(record, key_fields, counters)
+        mapping[key] = record
+    return mapping
+
+
 def diff_files(
     before: Path,
     after: Path,
@@ -150,37 +266,23 @@ def diff_files(
     record_localname: str | None = None,
     strip_namespaces: bool = False,
 ) -> DiffResult:
-    before_records: dict[str, dict[str, str]] = {}
-    before_keys_used: dict[str, Sequence[str]] = {}
     effective_localname = record_localname or config.record_localname
+    key_candidates = config.candidate_keys()
+    effective_fields = _ensure_field_coverage(config.fields, key_candidates)
 
-    for key, key_fields_used, record in _iter_records(
-        before,
-        config.record_path,
-        effective_localname,
-        config.fields,
-        config.key_fields,
-        strip_ns=strip_namespaces,
-    ):
-        if key in before_records:
-            raise DuplicateKeyError(f"Duplicate key {key!r} found in BEFORE file {before}")
-        before_records[key] = record
-        before_keys_used[key] = key_fields_used
+    before_records_raw, before_ns = _parse_records(
+        before, effective_localname, effective_fields, strip_ns=strip_namespaces
+    )
+    after_records_raw, after_ns = _parse_records(
+        after, effective_localname, effective_fields, strip_ns=strip_namespaces
+    )
 
-    after_records: dict[str, dict[str, str]] = {}
-    after_keys_used: dict[str, Sequence[str]] = {}
-    for key, key_fields_used, record in _iter_records(
-        after,
-        config.record_path,
-        effective_localname,
-        config.fields,
-        config.key_fields,
-        strip_ns=strip_namespaces,
-    ):
-        if key in after_records:
-            raise DuplicateKeyError(f"Duplicate key {key!r} found in AFTER file {after}")
-        after_records[key] = record
-        after_keys_used[key] = key_fields_used
+    key_fields_used, duplicates_info = _select_candidate(
+        [before_records_raw, after_records_raw], key_candidates
+    )
+
+    before_records = _build_record_map(before_records_raw, key_fields_used)
+    after_records = _build_record_map(after_records_raw, key_fields_used)
 
     added: list[dict[str, object]] = []
     removed: list[dict[str, object]] = []
@@ -191,7 +293,7 @@ def diff_files(
             added.append(
                 {
                     "key": key,
-                    "key_fields": list(after_keys_used[key]),
+                    "key_fields": list(key_fields_used),
                     "before": {},
                     "after": after_record,
                 }
@@ -202,7 +304,7 @@ def diff_files(
             removed.append(
                 {
                     "key": key,
-                    "key_fields": list(before_keys_used[key]),
+                    "key_fields": list(key_fields_used),
                     "before": before_record,
                     "after": {},
                 }
@@ -212,7 +314,7 @@ def diff_files(
         before_record = before_records[key]
         after_record = after_records[key]
         changes = {}
-        for field_name in config.fields:
+        for field_name in effective_fields:
             before_value = before_record.get(field_name, "")
             after_value = after_record.get(field_name, "")
             if before_value != after_value:
@@ -221,7 +323,7 @@ def diff_files(
             updated.append(
                 {
                     "key": key,
-                    "key_fields": list(before_keys_used.get(key, ())),
+                    "key_fields": list(key_fields_used),
                     "changes": changes,
                     "before": before_record,
                     "after": after_record,
@@ -248,24 +350,25 @@ def diff_files(
         "total_changed": len(added) + len(removed) + len(updated),
     }
 
+    namespace_detected = before_ns or after_ns
+
     meta = {
         "jira": jira,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "table": config.table_name,
-        "before_file": {
-            "path": str(before),
-            "sha256": _compute_hash(before),
-        },
-        "after_file": {
-            "path": str(after),
-            "sha256": _compute_hash(after),
-        },
+        "schema": config.schema,
         "record_path": config.record_path,
         "record_localname": effective_localname,
-        "fields": list(config.fields),
-        "key_fields": [list(keys) for keys in config.key_fields],
+        "fields_used": list(effective_fields),
+        "key_fields_used": list(key_fields_used),
+        "duplicates_resolved": duplicates_info,
+        "namespace_detected": namespace_detected,
         "partners_detected": unique_partners,
         "expected_partners": list(expected_partners) if expected_partners else [],
+        "input_files": [
+            {"role": "before", "path": str(before), "sha256": _compute_hash(before)},
+            {"role": "after", "path": str(after), "sha256": _compute_hash(after)},
+        ],
     }
 
     return DiffResult(

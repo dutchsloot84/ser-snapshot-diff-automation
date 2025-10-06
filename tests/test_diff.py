@@ -87,6 +87,19 @@ def test_ser_diff_add_remove_update(tmp_path: Path, ser_config: DiffConfig) -> N
     assert result.summary["added"] == 1
     assert result.summary["removed"] == 1
     assert result.summary["updated"] == 1
+    assert result.meta["schema"] == "SER"
+    assert result.meta["duplicates_resolved"]["resolved"] is True
+    assert result.meta["key_fields_used"] == [
+        "AccountNumber",
+        "CovFactor",
+        "ExposureType",
+        "RatingExposureType",
+        "Segment",
+        "State",
+        "EffectiveDate",
+        "RateEffectiveDate",
+        "ExpirationDate",
+    ]
     updated = result.updated[0]
     assert "AccountNumber=ACC-001" in updated["key"]
     assert updated["changes"]["Value"] == {"before": "1.10", "after": "1.20"}
@@ -135,6 +148,17 @@ def test_composite_key_support(tmp_path: Path, ser_config: DiffConfig) -> None:
     result = diff_files(before, after, ser_config)
     assert result.summary["updated"] == 1
     assert result.updated[0]["key"].startswith("AccountNumber=ACC-010")
+    assert result.meta["key_fields_used"] == [
+        "AccountNumber",
+        "CovFactor",
+        "ExposureType",
+        "RatingExposureType",
+        "Segment",
+        "State",
+        "EffectiveDate",
+        "RateEffectiveDate",
+        "ExpirationDate",
+    ]
 
 
 def test_whitespace_normalisation(tmp_path: Path, ser_config: DiffConfig) -> None:
@@ -179,3 +203,4 @@ def test_whitespace_normalisation(tmp_path: Path, ser_config: DiffConfig) -> Non
 
     result = diff_files(before, after, ser_config)
     assert result.summary["updated"] == 0
+    assert result.meta["namespace_detected"] is False

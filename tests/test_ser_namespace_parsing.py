@@ -20,3 +20,5 @@ def test_ser_preset_handles_namespaces() -> None:
     assert result.summary["added"] == 1
     assert result.summary["removed"] == 1
     assert result.summary["updated"] == 1
+    assert result.meta["namespace_detected"] is True
+    assert result.meta["schema"] == "SER"

@@ -5,6 +5,7 @@
 ## Features
 
 - Streaming XML reader powered by `xml.etree.ElementTree.iterparse` for large files.
+- Auto Mode detects schemas/namespaces and infers unique keys with optional `--explain` output.
 - Presets for SER and Exposure Types tables plus a fully custom mode.
 - Field-level diffing with auditable JSON + CSV outputs.
 - Threshold and partner guard rails for change management.
@@ -39,35 +40,36 @@ pip install -e .[dev]
 
 ## Quick Start
 
+### Auto Mode (recommended)
+
 ```bash
 ser-diff \
   --before exports/Prod_BEFORE_Import_CASSimpleExpsRateTbl_Ext.xml \
-  --after  exports/Prod_AFTER_Import_CASSimpleExpsRateTbl_Ext.xml  \
-  --table SER \
-  --out-prefix reports/MOBPXD-1223_Prod_SER_diff \
-  --jira MOBPXD-1223 \
-  --expected-partners Uber \
-  --max-added 50 --max-removed 10
-
-ser-diff \
-  --before exports/Prod_BEFORE_ExposureTypes.xml \
-  --after  exports/Prod_AFTER_ExposureTypes.xml  \
-  --table EXPOSURE \
-  --out-prefix reports/MOBPXD-1213_Prod_Exposure_diff \
-  --jira MOBPXD-1213
+  --after  exports/Prod_AFTER_Import_CASSimpleExpsRateTbl_Ext.xml \
+  --jira MOB-126703
 ```
 
-### PolicyCenter SER (CASSimpleExpsRateTbl_Ext)
+Auto Mode is enabled automatically whenever you omit `--table`/`--record-path`. Reports are written to `reports/` by default; use `--output-dir` to pick a different location. Add `--auto` explicitly if you prefer to be explicit.
+
+### What Auto Mode does
+
+- Detects PolicyCenter schemas (SER vs Exposure Types) by probing element local names.
+- Handles default or prefixed namespaces without additional flags; `--strip-ns` is available for tricky files.
+- Infers a stable key: `PublicID` when unique, otherwise a composite that is extended with additional fields (and, if required, a row counter) to avoid duplicate-key crashes.
+- Prints a one-line summary plus friendly zero-row diagnostics; `--explain` reveals the detected schema, fields, key candidates, and namespace status.
+
+### PolicyCenter SER (explicit preset)
 
 ```bash
 ser-diff \
   --before exports/Prod_BEFORE_Import_CASSimpleExpsRateTbl_Ext_27198Entries.xml \
   --after  exports/Prod_AFTER_Import_CASSimpleExpsRateTbl_27214Entries.xml \
   --table SER \
-  --out-prefix reports/MOB-126703_Prod_SER_diff \
+  --output-dir reports \
+  --out-prefix MOB-126703_Prod_SER_diff \
   --jira MOB-126703
 
-# If you still see 0 rows (namespaces), try:
+# Still seeing 0 rows? Try widening the filters:
 ser-diff \
   --before exports/Prod_BEFORE_Import_CASSimpleExpsRateTbl_Ext_27198Entries.xml \
   --after  exports/Prod_AFTER_Import_CASSimpleExpsRateTbl_27214Entries.xml \
@@ -76,7 +78,8 @@ ser-diff \
   --key AccountNumber --key CovFactor --key EffectiveDate --key ExpirationDate \
   --key RateEffectiveDate --key RatingExposureType --key Segment --key State \
   --fields AccountNumber,CovFactor,EffectiveDate,ExpirationDate,ExposureType,RateEffectiveDate,RatingExposureType,Segment,State,Value \
-  --out-prefix reports/MOB-126703_Prod_SER_diff \
+  --output-dir reports \
+  --out-prefix MOB-126703_Prod_SER_diff \
   --jira MOB-126703 \
   --strip-ns
 ```
@@ -89,7 +92,9 @@ ser-diff \
   --after after.xml \
   --record-path .//CustomRecord \
   --key PublicID --key Partner \
-  --fields PublicID,Partner,State,Factor
+  --fields PublicID,Partner,State,Factor \
+  --output-dir reports \
+  --out-prefix custom_diff
 ```
 
 ## SOP Snippet (Standard Change)
@@ -110,6 +115,7 @@ ser-diff \
 
 - `--max-added` / `--max-removed` enforce safety rails. Set `--fail-on-unexpected` to exit with status `2` if the gates are breached (reports are still written).
 - `--expected-partners` validates the `Partner` column. Unexpected partners are highlighted and can fail the run with `--fail-on-unexpected`.
+- `--strict` upgrades warnings (zero rows, schema mismatches) to exit status `2` so CI can block on unexpected inputs.
 
 ## Performance Notes
 
@@ -130,6 +136,13 @@ make demo      # build sample reports
 ```
 
 CI runs linting, tests, and demo generation on Python 3.10 and 3.12. Reports are uploaded as artifacts for traceability.
+
+## Changelog
+
+### Unreleased
+
+- Auto Mode now detects schemas, handles namespaces, and infers unique keys without crashing on duplicates.
+- CLI adds `--output-dir`, `--explain`, and `--strict`, printing a concise summary with friendlier zero-row diagnostics.
 
 ## License
 
