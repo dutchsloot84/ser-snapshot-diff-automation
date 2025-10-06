@@ -1,0 +1,108 @@
+{
+  "summary": {
+    "added": 1,
+    "removed": 1,
+    "updated": 1,
+    "total_before": 2,
+    "total_after": 2,
+    "total_changed": 3
+  },
+  "meta": {
+    "jira": "SAMPLE-EXP",
+    "generated_at": "2025-10-06T18:07:38.063248+00:00",
+    "table": "EXPOSURE",
+    "before_file": {
+      "path": "samples/EXPOSURE_before.xml",
+      "sha256": "b5608557888556ed744629e84a6ad28939dc02baa9b484e9d6f7775bfbbf1881"
+    },
+    "after_file": {
+      "path": "samples/EXPOSURE_after.xml",
+      "sha256": "0aa43db503b82d256b99078fda1988baee38f36fe1ae33d4a0458b98c6563bbb"
+    },
+    "record_path": ".//ExposureType",
+    "fields": [
+      "PublicID",
+      "ExposureCode",
+      "Partner",
+      "State",
+      "EffectiveDate",
+      "ExpirationDate"
+    ],
+    "key_fields": [
+      [
+        "PublicID"
+      ]
+    ],
+    "partners_detected": [
+      "DoorDash",
+      "HelloFresh",
+      "Uber"
+    ],
+    "expected_partners": []
+  },
+  "added": [
+    {
+      "key": "PublicID=EXP-DOORDASH-01",
+      "key_fields": [
+        "PublicID"
+      ],
+      "before": {},
+      "after": {
+        "PublicID": "EXP-DOORDASH-01",
+        "ExposureCode": "DDR",
+        "Partner": "DoorDash",
+        "State": "TX",
+        "EffectiveDate": "2023-03-01",
+        "ExpirationDate": "2023-12-31"
+      }
+    }
+  ],
+  "removed": [
+    {
+      "key": "PublicID=EXP-HELLO-01",
+      "key_fields": [
+        "PublicID"
+      ],
+      "before": {
+        "PublicID": "EXP-HELLO-01",
+        "ExposureCode": "HFR",
+        "Partner": "HelloFresh",
+        "State": "CA",
+        "EffectiveDate": "2023-01-01",
+        "ExpirationDate": "2023-12-31"
+      },
+      "after": {}
+    }
+  ],
+  "updated": [
+    {
+      "key": "PublicID=EXP-UBER-01",
+      "key_fields": [
+        "PublicID"
+      ],
+      "changes": {
+        "State": {
+          "before": "NY",
+          "after": "NJ"
+        }
+      },
+      "before": {
+        "PublicID": "EXP-UBER-01",
+        "ExposureCode": "UBR",
+        "Partner": "Uber",
+        "State": "NY",
+        "EffectiveDate": "2023-01-01",
+        "ExpirationDate": "2023-12-31"
+      },
+      "after": {
+        "PublicID": "EXP-UBER-01",
+        "ExposureCode": "UBR",
+        "Partner": "Uber",
+        "State": "NJ",
+        "EffectiveDate": "2023-01-01",
+        "ExpirationDate": "2023-12-31"
+      }
+    }
+  ],
+  "unexpected_partners": []
+}

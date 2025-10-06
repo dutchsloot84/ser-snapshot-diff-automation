@@ -1,0 +1,2 @@
+key,key_fields,before,after
+PublicID=EXP-DOORDASH-01,['PublicID'],{},"{""EffectiveDate"": ""2023-03-01"", ""ExpirationDate"": ""2023-12-31"", ""ExposureCode"": ""DDR"", ""Partner"": ""DoorDash"", ""PublicID"": ""EXP-DOORDASH-01"", ""State"": ""TX""}"
