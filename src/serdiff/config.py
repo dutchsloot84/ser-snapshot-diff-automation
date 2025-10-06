@@ -68,4 +68,3 @@ def load_config(base_dir: Path | None = None) -> LoadedConfig:
         return LoadedConfig(path=candidate, data=data)
 
     return LoadedConfig(path=None, data={})
-

@@ -232,9 +232,9 @@ def _generate_config_template(base_dir: Path) -> str:
         "",
         "[guards]",
         '# expected_partners = ["Partner One", "Partner Two"]',
-        '# max_added = 0',
-        '# max_removed = 0',
-        '# fail_on_unexpected = true',
+        "# max_added = 0",
+        "# max_removed = 0",
+        "# fail_on_unexpected = true",
         "",
         "[preset]",
         '# mode = "auto"  # options: auto | SER | custom',
@@ -244,7 +244,7 @@ def _generate_config_template(base_dir: Path) -> str:
         '# record_localname = "Record"',
         '# keys = ["KeyField1", "KeyField2"]',
         '# fields = ["Field1", "Field2"]',
-        '# strip_ns = false',
+        "# strip_ns = false",
         "",
     ]
     return "\n".join(lines)
@@ -492,7 +492,9 @@ def _merge_cli_with_config(args: argparse.Namespace, loaded: LoadedConfig) -> ar
             expected = guards_config.get("expected_partners")
             if args.expected_partners is None and expected is not None:
                 if isinstance(expected, list):
-                    partners = [str(partner).strip() for partner in expected if str(partner).strip()]
+                    partners = [
+                        str(partner).strip() for partner in expected if str(partner).strip()
+                    ]
                     if partners:
                         args.expected_partners = ", ".join(partners)
                 elif isinstance(expected, str) and expected.strip():
@@ -514,12 +516,7 @@ def _merge_cli_with_config(args: argparse.Namespace, loaded: LoadedConfig) -> ar
         custom_config = config.get("custom", {})
         if isinstance(preset_config, dict):
             mode_value = preset_config.get("mode")
-            if (
-                mode_value
-                and args.table is None
-                and args.record_path is None
-                and args.auto is None
-            ):
+            if mode_value and args.table is None and args.record_path is None and args.auto is None:
                 mode = str(mode_value).strip().lower()
                 if mode == "auto":
                     args.auto = True
@@ -583,9 +580,7 @@ def _evaluate_thresholds(
 
     if expected_partners and result.unexpected_partners:
         violations.append("UNEXPECTED_PARTNER")
-        messages.append(
-            "Unexpected partners detected: " + ", ".join(result.unexpected_partners)
-        )
+        messages.append("Unexpected partners detected: " + ", ".join(result.unexpected_partners))
 
     if max_added is not None and added > max_added:
         violations.append("MAX_ADDED")

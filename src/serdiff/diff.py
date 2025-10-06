@@ -455,8 +455,7 @@ def _build_canonical_payload(
             },
         },
         "added": [
-            {"key": record.get("key"), "record": record.get("after", {})}
-            for record in result.added
+            {"key": record.get("key"), "record": record.get("after", {})} for record in result.added
         ],
         "removed": [
             {"key": record.get("key"), "record": record.get("before", {})}

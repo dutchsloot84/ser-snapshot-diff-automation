@@ -208,10 +208,17 @@ Sample SER and Exposure XML files live in `samples/`. Run `make demo` to generat
 
 ```bash
 make venv      # create a virtual environment with dev deps
-make fmt       # run black + ruff --fix
-make lint      # run ruff linting
-make test      # run pytest
+make fmt       # run black + ruff --fix across the repo
+make lint      # run ruff check and black --check
+make test      # run pytest -q
 make demo      # build sample reports
+```
+
+To auto-format before committing, install the pre-commit hooks:
+
+```bash
+pip install pre-commit
+pre-commit install
 ```
 
 CI runs linting, tests, and demo generation on Python 3.10 and 3.12. Reports are uploaded as artifacts for traceability.

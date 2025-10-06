@@ -99,7 +99,7 @@ def test_init_creates_template_and_is_idempotent(tmp_path, monkeypatch):
 
     content_first = config_path.read_text(encoding="utf-8")
     assert "# ser-diff configuration template" in content_first
-    assert "# out_prefix = \"diff_report\"" in content_first
+    assert '# out_prefix = "diff_report"' in content_first
     assert str((tmp_path / "reports").resolve()) in content_first
 
     second_exit = cli.main(["init"])
