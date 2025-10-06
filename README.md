@@ -15,10 +15,25 @@
 Use a virtual environment or `pipx`:
 
 ```bash
+python -m pip install --upgrade pip setuptools wheel
 pipx install .
 # or
 python -m venv .venv
 source .venv/bin/activate
+pip install -e .[dev]
+```
+
+### Windows virtual environment
+
+```powershell
+# PowerShell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e .[dev]
+
+# Git Bash / MINGW64
+python -m venv .venv
+source .venv/Scripts/activate
 pip install -e .[dev]
 ```
 

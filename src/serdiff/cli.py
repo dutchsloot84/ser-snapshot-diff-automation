@@ -1,4 +1,5 @@
 """Command line interface for the ser-diff tool."""
+
 from __future__ import annotations
 
 import argparse
@@ -24,7 +25,9 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--after", required=True, help="Path to the AFTER XML export")
 
     table_group = parser.add_mutually_exclusive_group(required=False)
-    table_group.add_argument("--table", choices=["SER", "EXPOSURE", "custom"], help="Preset table to use")
+    table_group.add_argument(
+        "--table", choices=["SER", "EXPOSURE", "custom"], help="Preset table to use"
+    )
     table_group.add_argument("--record-path", help="XPath to the repeating record elements")
 
     parser.add_argument(
@@ -37,14 +40,20 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--fields",
         help="Comma separated list of fields to compare (overrides preset)",
     )
-    parser.add_argument("--out-prefix", default="diff_report", help="Output prefix for generated reports")
+    parser.add_argument(
+        "--out-prefix", default="diff_report", help="Output prefix for generated reports"
+    )
     parser.add_argument("--jira", help="Jira ID to embed in report metadata and filenames")
     parser.add_argument(
         "--expected-partners",
         help="Comma separated list of expected partners; others will raise alerts",
     )
-    parser.add_argument("--max-added", type=int, help="Maximum allowed added records before failing")
-    parser.add_argument("--max-removed", type=int, help="Maximum allowed removed records before failing")
+    parser.add_argument(
+        "--max-added", type=int, help="Maximum allowed added records before failing"
+    )
+    parser.add_argument(
+        "--max-removed", type=int, help="Maximum allowed removed records before failing"
+    )
     parser.add_argument(
         "--fail-on-unexpected",
         action="store_true",
@@ -120,9 +129,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     before_path = Path(args.before)
     after_path = Path(args.after)
 
-    out_prefix = (
-        Path(f"{args.out_prefix}_{args.jira}") if args.jira else Path(args.out_prefix)
-    )
+    out_prefix = Path(f"{args.out_prefix}_{args.jira}") if args.jira else Path(args.out_prefix)
 
     if args.excel:
         print("Excel validation is not implemented yet (TODO)", file=sys.stderr)
@@ -145,9 +152,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     failures: list[str] = []
 
     if expected_partners and result.unexpected_partners:
-        failures.append(
-            "Unexpected partners detected: " + ", ".join(result.unexpected_partners)
-        )
+        failures.append("Unexpected partners detected: " + ", ".join(result.unexpected_partners))
 
     added = result.summary.get("added", 0)
     removed = result.summary.get("removed", 0)

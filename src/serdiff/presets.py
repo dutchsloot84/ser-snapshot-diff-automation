@@ -1,4 +1,5 @@
 """Presets for SER and Exposure Type tables."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

@@ -1,4 +1,5 @@
 """Core diff logic for SER Snapshot Diff Automation."""
+
 from __future__ import annotations
 
 import csv
@@ -97,7 +98,9 @@ def _find_child_text(elem: ET.Element, child_name: str) -> str | None:
     return None
 
 
-def _derive_key(record: dict[str, str], key_sets: Sequence[Sequence[str]]) -> tuple[str, Sequence[str]]:
+def _derive_key(
+    record: dict[str, str], key_sets: Sequence[Sequence[str]]
+) -> tuple[str, Sequence[str]]:
     for key_fields in key_sets:
         values = [record.get(field, "") for field in key_fields]
         if any(value for value in values):
@@ -135,7 +138,9 @@ def diff_files(
 ) -> DiffResult:
     before_records: dict[str, dict[str, str]] = {}
     before_keys_used: dict[str, Sequence[str]] = {}
-    for key, key_fields_used, record in _iter_records(before, config.record_path, config.fields, config.key_fields):
+    for key, key_fields_used, record in _iter_records(
+        before, config.record_path, config.fields, config.key_fields
+    ):
         if key in before_records:
             raise DuplicateKeyError(f"Duplicate key {key!r} found in BEFORE file {before}")
         before_records[key] = record
@@ -143,7 +148,9 @@ def diff_files(
 
     after_records: dict[str, dict[str, str]] = {}
     after_keys_used: dict[str, Sequence[str]] = {}
-    for key, key_fields_used, record in _iter_records(after, config.record_path, config.fields, config.key_fields):
+    for key, key_fields_used, record in _iter_records(
+        after, config.record_path, config.fields, config.key_fields
+    ):
         if key in after_records:
             raise DuplicateKeyError(f"Duplicate key {key!r} found in AFTER file {after}")
         after_records[key] = record
@@ -195,12 +202,16 @@ def diff_files(
                 }
             )
 
-    partner_pool = _collect_partners(after_records.values()) + _collect_partners(before_records.values())
+    partner_pool = _collect_partners(after_records.values()) + _collect_partners(
+        before_records.values()
+    )
     unique_partners = sorted(set(partner_pool))
     unexpected_partners: list[str] = []
     if expected_partners:
         expected_set = {partner.strip() for partner in expected_partners if partner.strip()}
-        unexpected_partners = sorted({partner for partner in unique_partners if partner not in expected_set})
+        unexpected_partners = sorted(
+            {partner for partner in unique_partners if partner not in expected_set}
+        )
 
     summary = {
         "added": len(added),
@@ -300,10 +311,12 @@ def _write_csv_reports(result: DiffResult, out_prefix: Path) -> list[str]:
 
 
 def _write_record_csv(path: Path, records: Sequence[dict[str, object]]) -> None:
-    base_headers = sorted({
-        *(key for record in records for key in record),
-        "key",
-    })
+    base_headers = sorted(
+        {
+            *(key for record in records for key in record),
+            "key",
+        }
+    )
     headers = [header for header in base_headers if header not in {"before", "after", "changes"}]
     headers += ["before", "after"]
     with path.open("w", newline="", encoding="utf-8") as handle:
