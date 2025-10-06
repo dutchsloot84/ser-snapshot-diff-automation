@@ -1,6 +1,9 @@
+.venv/
 __pycache__/
 *.pyc
-.venv/
-reports/demo_*
 .cache/
 .pytest_cache/
+dist/
+build/
+*.egg-info/
+reports/

@@ -17,15 +17,18 @@ def test_cli_threshold_failure(tmp_path: Path) -> None:
         tmp_path / "before.xml",
         """
         <SimpleExposureRates>
-          <Rate>
-            <PublicID>SER-UBER-NY</PublicID>
-            <Partner>Uber</Partner>
-            <State>NY</State>
-            <AgeBand>Adult</AgeBand>
+          <CASSimpleExpsRateTbl_Ext>
+            <AccountNumber>ACC-001</AccountNumber>
+            <CovFactor>1.00</CovFactor>
             <EffectiveDate>2023-01-01</EffectiveDate>
             <ExpirationDate>2023-12-31</ExpirationDate>
-            <Factor>1.10</Factor>
-          </Rate>
+            <ExposureType>Auto</ExposureType>
+            <RateEffectiveDate>2023-01-01</RateEffectiveDate>
+            <RatingExposureType>Primary</RatingExposureType>
+            <Segment>SegmentA</Segment>
+            <State>NY</State>
+            <Value>1.10</Value>
+          </CASSimpleExpsRateTbl_Ext>
         </SimpleExposureRates>
         """,
     )
@@ -33,24 +36,30 @@ def test_cli_threshold_failure(tmp_path: Path) -> None:
         tmp_path / "after.xml",
         """
         <SimpleExposureRates>
-          <Rate>
-            <PublicID>SER-UBER-NY</PublicID>
-            <Partner>Uber</Partner>
-            <State>NY</State>
-            <AgeBand>Adult</AgeBand>
+          <CASSimpleExpsRateTbl_Ext>
+            <AccountNumber>ACC-001</AccountNumber>
+            <CovFactor>1.00</CovFactor>
             <EffectiveDate>2023-01-01</EffectiveDate>
             <ExpirationDate>2023-12-31</ExpirationDate>
-            <Factor>1.10</Factor>
-          </Rate>
-          <Rate>
-            <PublicID>SER-NEW-01</PublicID>
-            <Partner>Uber</Partner>
-            <State>CA</State>
-            <AgeBand>Adult</AgeBand>
+            <ExposureType>Auto</ExposureType>
+            <RateEffectiveDate>2023-01-01</RateEffectiveDate>
+            <RatingExposureType>Primary</RatingExposureType>
+            <Segment>SegmentA</Segment>
+            <State>NY</State>
+            <Value>1.10</Value>
+          </CASSimpleExpsRateTbl_Ext>
+          <CASSimpleExpsRateTbl_Ext>
+            <AccountNumber>ACC-002</AccountNumber>
+            <CovFactor>1.00</CovFactor>
             <EffectiveDate>2023-05-01</EffectiveDate>
             <ExpirationDate>2023-12-31</ExpirationDate>
-            <Factor>1.30</Factor>
-          </Rate>
+            <ExposureType>Auto</ExposureType>
+            <RateEffectiveDate>2023-05-01</RateEffectiveDate>
+            <RatingExposureType>Primary</RatingExposureType>
+            <Segment>SegmentB</Segment>
+            <State>CA</State>
+            <Value>1.30</Value>
+          </CASSimpleExpsRateTbl_Ext>
         </SimpleExposureRates>
         """,
     )
@@ -66,6 +75,10 @@ def test_cli_threshold_failure(tmp_path: Path) -> None:
             "--max-added",
             "0",
             "--fail-on-unexpected",
+            "--output-dir",
+            str(tmp_path),
+            "--out-prefix",
+            "report",
         ]
     )
 
@@ -76,46 +89,43 @@ def test_expected_partner_detection(tmp_path: Path) -> None:
     before = write_xml(
         tmp_path / "before.xml",
         """
-        <SimpleExposureRates>
-          <Rate>
-            <PublicID>SER-UBER-NY</PublicID>
+        <ExposureTypes>
+          <ExposureType>
+            <PublicID>EXP-001</PublicID>
+            <ExposureCode>AUTO</ExposureCode>
             <Partner>Uber</Partner>
             <State>NY</State>
-            <AgeBand>Adult</AgeBand>
             <EffectiveDate>2023-01-01</EffectiveDate>
             <ExpirationDate>2023-12-31</ExpirationDate>
-            <Factor>1.10</Factor>
-          </Rate>
-        </SimpleExposureRates>
+          </ExposureType>
+        </ExposureTypes>
         """,
     )
     after = write_xml(
         tmp_path / "after.xml",
         """
-        <SimpleExposureRates>
-          <Rate>
-            <PublicID>SER-UBER-NY</PublicID>
+        <ExposureTypes>
+          <ExposureType>
+            <PublicID>EXP-001</PublicID>
+            <ExposureCode>AUTO</ExposureCode>
             <Partner>Uber</Partner>
             <State>NY</State>
-            <AgeBand>Adult</AgeBand>
             <EffectiveDate>2023-01-01</EffectiveDate>
             <ExpirationDate>2023-12-31</ExpirationDate>
-            <Factor>1.10</Factor>
-          </Rate>
-          <Rate>
-            <PublicID>SER-DOORDASH-01</PublicID>
+          </ExposureType>
+          <ExposureType>
+            <PublicID>EXP-002</PublicID>
+            <ExposureCode>AUTO</ExposureCode>
             <Partner>DoorDash</Partner>
             <State>TX</State>
-            <AgeBand>Adult</AgeBand>
             <EffectiveDate>2023-01-01</EffectiveDate>
             <ExpirationDate>2023-12-31</ExpirationDate>
-            <Factor>1.00</Factor>
-          </Rate>
-        </SimpleExposureRates>
+          </ExposureType>
+        </ExposureTypes>
         """,
     )
 
-    preset = get_preset("SER")
+    preset = get_preset("EXPOSURE")
     result = diff_files(
         Path(before),
         Path(after),

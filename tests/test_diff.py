@@ -23,24 +23,30 @@ def test_ser_diff_add_remove_update(tmp_path: Path, ser_config: DiffConfig) -> N
         tmp_path / "before.xml",
         """
         <SimpleExposureRates>
-          <Rate>
-            <PublicID>SER-UBER-NY</PublicID>
-            <Partner>Uber</Partner>
+          <CASSimpleExpsRateTbl_Ext>
+            <AccountNumber>ACC-001</AccountNumber>
+            <CovFactor>1.00</CovFactor>
+            <EffectiveDate>2023-01-01</EffectiveDate>
+            <ExpirationDate>2023-12-31</ExpirationDate>
+            <ExposureType>Auto</ExposureType>
+            <RateEffectiveDate>2023-01-01</RateEffectiveDate>
+            <RatingExposureType>Primary</RatingExposureType>
+            <Segment>SegmentA</Segment>
             <State>NY</State>
-            <AgeBand>Adult</AgeBand>
+            <Value>1.10</Value>
+          </CASSimpleExpsRateTbl_Ext>
+          <CASSimpleExpsRateTbl_Ext>
+            <AccountNumber>ACC-002</AccountNumber>
+            <CovFactor>1.00</CovFactor>
             <EffectiveDate>2023-01-01</EffectiveDate>
             <ExpirationDate>2023-12-31</ExpirationDate>
-            <Factor>1.10</Factor>
-          </Rate>
-          <Rate>
-            <PublicID>SER-HELLO-CA</PublicID>
-            <Partner>HelloFresh</Partner>
+            <ExposureType>Auto</ExposureType>
+            <RateEffectiveDate>2023-01-01</RateEffectiveDate>
+            <RatingExposureType>Primary</RatingExposureType>
+            <Segment>SegmentB</Segment>
             <State>CA</State>
-            <AgeBand>Adult</AgeBand>
-            <EffectiveDate>2023-01-01</EffectiveDate>
-            <ExpirationDate>2023-12-31</ExpirationDate>
-            <Factor>0.95</Factor>
-          </Rate>
+            <Value>0.95</Value>
+          </CASSimpleExpsRateTbl_Ext>
         </SimpleExposureRates>
         """,
     )
@@ -48,24 +54,30 @@ def test_ser_diff_add_remove_update(tmp_path: Path, ser_config: DiffConfig) -> N
         tmp_path / "after.xml",
         """
         <SimpleExposureRates>
-          <Rate>
-            <PublicID>SER-UBER-NY</PublicID>
-            <Partner>Uber</Partner>
-            <State>NY</State>
-            <AgeBand>Adult</AgeBand>
+          <CASSimpleExpsRateTbl_Ext>
+            <AccountNumber>ACC-001</AccountNumber>
+            <CovFactor>1.00</CovFactor>
             <EffectiveDate>2023-01-01</EffectiveDate>
             <ExpirationDate>2023-12-31</ExpirationDate>
-            <Factor>1.20</Factor>
-          </Rate>
-          <Rate>
-            <PublicID>SER-MARSH-IL</PublicID>
-            <Partner>Marsh Risk</Partner>
-            <State>IL</State>
-            <AgeBand>Adult</AgeBand>
+            <ExposureType>Auto</ExposureType>
+            <RateEffectiveDate>2023-01-01</RateEffectiveDate>
+            <RatingExposureType>Primary</RatingExposureType>
+            <Segment>SegmentA</Segment>
+            <State>NY</State>
+            <Value>1.20</Value>
+          </CASSimpleExpsRateTbl_Ext>
+          <CASSimpleExpsRateTbl_Ext>
+            <AccountNumber>ACC-003</AccountNumber>
+            <CovFactor>1.00</CovFactor>
             <EffectiveDate>2023-06-01</EffectiveDate>
             <ExpirationDate>2023-12-31</ExpirationDate>
-            <Factor>1.40</Factor>
-          </Rate>
+            <ExposureType>Auto</ExposureType>
+            <RateEffectiveDate>2023-06-01</RateEffectiveDate>
+            <RatingExposureType>Primary</RatingExposureType>
+            <Segment>SegmentC</Segment>
+            <State>IL</State>
+            <Value>1.40</Value>
+          </CASSimpleExpsRateTbl_Ext>
         </SimpleExposureRates>
         """,
     )
@@ -75,9 +87,22 @@ def test_ser_diff_add_remove_update(tmp_path: Path, ser_config: DiffConfig) -> N
     assert result.summary["added"] == 1
     assert result.summary["removed"] == 1
     assert result.summary["updated"] == 1
+    assert result.meta["schema"] == "SER"
+    assert result.meta["duplicates_resolved"]["resolved"] is True
+    assert result.meta["key_fields_used"] == [
+        "AccountNumber",
+        "CovFactor",
+        "ExposureType",
+        "RatingExposureType",
+        "Segment",
+        "State",
+        "EffectiveDate",
+        "RateEffectiveDate",
+        "ExpirationDate",
+    ]
     updated = result.updated[0]
-    assert updated["key"] == "PublicID=SER-UBER-NY"
-    assert updated["changes"]["Factor"] == {"before": "1.10", "after": "1.20"}
+    assert "AccountNumber=ACC-001" in updated["key"]
+    assert updated["changes"]["Value"] == {"before": "1.10", "after": "1.20"}
 
 
 def test_composite_key_support(tmp_path: Path, ser_config: DiffConfig) -> None:
@@ -85,14 +110,18 @@ def test_composite_key_support(tmp_path: Path, ser_config: DiffConfig) -> None:
         tmp_path / "before.xml",
         """
         <SimpleExposureRates>
-          <Rate>
-            <Partner>Uber</Partner>
-            <State>WA</State>
-            <AgeBand>Adult</AgeBand>
+          <CASSimpleExpsRateTbl_Ext>
+            <AccountNumber>ACC-010</AccountNumber>
+            <CovFactor>2.00</CovFactor>
             <EffectiveDate>2023-01-01</EffectiveDate>
             <ExpirationDate>2023-12-31</ExpirationDate>
-            <Factor>1.00</Factor>
-          </Rate>
+            <ExposureType>Auto</ExposureType>
+            <RateEffectiveDate>2023-01-01</RateEffectiveDate>
+            <RatingExposureType>Primary</RatingExposureType>
+            <Segment>SegmentZ</Segment>
+            <State>WA</State>
+            <Value>1.00</Value>
+          </CASSimpleExpsRateTbl_Ext>
         </SimpleExposureRates>
         """,
     )
@@ -100,21 +129,36 @@ def test_composite_key_support(tmp_path: Path, ser_config: DiffConfig) -> None:
         tmp_path / "after.xml",
         """
         <SimpleExposureRates>
-          <Rate>
-            <Partner>Uber</Partner>
-            <State>WA</State>
-            <AgeBand>Adult</AgeBand>
+          <CASSimpleExpsRateTbl_Ext>
+            <AccountNumber>ACC-010</AccountNumber>
+            <CovFactor>2.00</CovFactor>
             <EffectiveDate>2023-01-01</EffectiveDate>
             <ExpirationDate>2023-12-31</ExpirationDate>
-            <Factor>1.05</Factor>
-          </Rate>
+            <ExposureType>Auto</ExposureType>
+            <RateEffectiveDate>2023-01-01</RateEffectiveDate>
+            <RatingExposureType>Primary</RatingExposureType>
+            <Segment>SegmentZ</Segment>
+            <State>WA</State>
+            <Value>1.05</Value>
+          </CASSimpleExpsRateTbl_Ext>
         </SimpleExposureRates>
         """,
     )
 
     result = diff_files(before, after, ser_config)
     assert result.summary["updated"] == 1
-    assert result.updated[0]["key"].startswith("Partner=Uber")
+    assert result.updated[0]["key"].startswith("AccountNumber=ACC-010")
+    assert result.meta["key_fields_used"] == [
+        "AccountNumber",
+        "CovFactor",
+        "ExposureType",
+        "RatingExposureType",
+        "Segment",
+        "State",
+        "EffectiveDate",
+        "RateEffectiveDate",
+        "ExpirationDate",
+    ]
 
 
 def test_whitespace_normalisation(tmp_path: Path, ser_config: DiffConfig) -> None:
@@ -122,15 +166,18 @@ def test_whitespace_normalisation(tmp_path: Path, ser_config: DiffConfig) -> Non
         tmp_path / "before.xml",
         """
         <SimpleExposureRates>
-          <Rate>
-            <PublicID>SER-UBER-NY</PublicID>
-            <Partner> Uber </Partner>
-            <State> NY </State>
-            <AgeBand>Adult</AgeBand>
+          <CASSimpleExpsRateTbl_Ext>
+            <AccountNumber> ACC-001 </AccountNumber>
+            <CovFactor> 1.00 </CovFactor>
             <EffectiveDate> 2023-01-01 </EffectiveDate>
-            <ExpirationDate>2023-12-31</ExpirationDate>
-            <Factor>1.10</Factor>
-          </Rate>
+            <ExpirationDate> 2023-12-31 </ExpirationDate>
+            <ExposureType> Auto </ExposureType>
+            <RateEffectiveDate> 2023-01-01 </RateEffectiveDate>
+            <RatingExposureType> Primary </RatingExposureType>
+            <Segment> SegmentA </Segment>
+            <State> NY </State>
+            <Value> 1.10 </Value>
+          </CASSimpleExpsRateTbl_Ext>
         </SimpleExposureRates>
         """,
     )
@@ -138,18 +185,22 @@ def test_whitespace_normalisation(tmp_path: Path, ser_config: DiffConfig) -> Non
         tmp_path / "after.xml",
         """
         <SimpleExposureRates>
-          <Rate>
-            <PublicID>SER-UBER-NY</PublicID>
-            <Partner>Uber</Partner>
-            <State>NY</State>
-            <AgeBand>Adult</AgeBand>
+          <CASSimpleExpsRateTbl_Ext>
+            <AccountNumber>ACC-001</AccountNumber>
+            <CovFactor>1.00</CovFactor>
             <EffectiveDate>2023-01-01</EffectiveDate>
             <ExpirationDate>2023-12-31</ExpirationDate>
-            <Factor>1.10</Factor>
-          </Rate>
+            <ExposureType>Auto</ExposureType>
+            <RateEffectiveDate>2023-01-01</RateEffectiveDate>
+            <RatingExposureType>Primary</RatingExposureType>
+            <Segment>SegmentA</Segment>
+            <State>NY</State>
+            <Value>1.10</Value>
+          </CASSimpleExpsRateTbl_Ext>
         </SimpleExposureRates>
         """,
     )
 
     result = diff_files(before, after, ser_config)
     assert result.summary["updated"] == 0
+    assert result.meta["namespace_detected"] is False

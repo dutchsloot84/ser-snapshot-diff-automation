@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Exports xmlns="http://guidewire.com/pc">
+  <CASSimpleExpsRateTbl_Ext>
+    <AccountNumber>ACC-001</AccountNumber>
+    <CovFactor>1.00</CovFactor>
+    <EffectiveDate>2023-01-01</EffectiveDate>
+    <ExpirationDate>2023-12-31</ExpirationDate>
+    <ExposureType>Auto</ExposureType>
+    <RateEffectiveDate>2023-01-01</RateEffectiveDate>
+    <RatingExposureType>Primary</RatingExposureType>
+    <Segment>SegmentA</Segment>
+    <State>NY</State>
+    <Value>1.20</Value>
+  </CASSimpleExpsRateTbl_Ext>
+  <CASSimpleExpsRateTbl_Ext>
+    <AccountNumber>ACC-003</AccountNumber>
+    <CovFactor>1.25</CovFactor>
+    <EffectiveDate>2023-03-01</EffectiveDate>
+    <ExpirationDate>2023-12-31</ExpirationDate>
+    <ExposureType>Auto</ExposureType>
+    <RateEffectiveDate>2023-03-01</RateEffectiveDate>
+    <RatingExposureType>Primary</RatingExposureType>
+    <Segment>SegmentC</Segment>
+    <State>NJ</State>
+    <Value>1.05</Value>
+  </CASSimpleExpsRateTbl_Ext>
+</Exports>

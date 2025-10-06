@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pc:Exports xmlns:pc="http://guidewire.com/pc">
+  <pc:CASSimpleExpsRateTbl_Ext>
+    <pc:AccountNumber>ACC-001</pc:AccountNumber>
+    <pc:CovFactor>1.00</pc:CovFactor>
+    <pc:EffectiveDate>2023-01-01</pc:EffectiveDate>
+    <pc:ExpirationDate>2023-12-31</pc:ExpirationDate>
+    <pc:ExposureType>Auto</pc:ExposureType>
+    <pc:RateEffectiveDate>2023-01-01</pc:RateEffectiveDate>
+    <pc:RatingExposureType>Primary</pc:RatingExposureType>
+    <pc:Segment>SegmentA</pc:Segment>
+    <pc:State>NY</pc:State>
+    <pc:Value>1.10</pc:Value>
+  </pc:CASSimpleExpsRateTbl_Ext>
+  <pc:CASSimpleExpsRateTbl_Ext>
+    <pc:AccountNumber>ACC-002</pc:AccountNumber>
+    <pc:CovFactor>1.50</pc:CovFactor>
+    <pc:EffectiveDate>2023-02-01</pc:EffectiveDate>
+    <pc:ExpirationDate>2023-12-31</pc:ExpirationDate>
+    <pc:ExposureType>Auto</pc:ExposureType>
+    <pc:RateEffectiveDate>2023-02-01</pc:RateEffectiveDate>
+    <pc:RatingExposureType>Primary</pc:RatingExposureType>
+    <pc:Segment>SegmentB</pc:Segment>
+    <pc:State>CA</pc:State>
+    <pc:Value>0.95</pc:Value>
+  </pc:CASSimpleExpsRateTbl_Ext>
+</pc:Exports>
