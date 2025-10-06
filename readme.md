@@ -1,0 +1,1 @@
+ser-snapshot-diff-automation.git
