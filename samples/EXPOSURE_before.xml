@@ -1,0 +1,18 @@
+<ExposureTypes>
+  <ExposureType>
+    <PublicID>EXP-UBER-01</PublicID>
+    <ExposureCode>UBR</ExposureCode>
+    <Partner>Uber</Partner>
+    <State>NY</State>
+    <EffectiveDate>2023-01-01</EffectiveDate>
+    <ExpirationDate>2023-12-31</ExpirationDate>
+  </ExposureType>
+  <ExposureType>
+    <PublicID>EXP-HELLO-01</PublicID>
+    <ExposureCode>HFR</ExposureCode>
+    <Partner>HelloFresh</Partner>
+    <State>CA</State>
+    <EffectiveDate>2023-01-01</EffectiveDate>
+    <ExpirationDate>2023-12-31</ExpirationDate>
+  </ExposureType>
+</ExposureTypes>

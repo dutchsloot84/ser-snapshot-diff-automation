@@ -1,0 +1,28 @@
+<SimpleExposureRates>
+  <Rate>
+    <PublicID>SER-UBER-NY</PublicID>
+    <Partner>Uber</Partner>
+    <State>NY</State>
+    <AgeBand>Adult</AgeBand>
+    <EffectiveDate>2023-01-01</EffectiveDate>
+    <ExpirationDate>2023-12-31</ExpirationDate>
+    <Factor>1.25</Factor>
+  </Rate>
+  <Rate>
+    <Partner>DoorDash</Partner>
+    <State>TX</State>
+    <AgeBand>Adult</AgeBand>
+    <EffectiveDate>2023-01-01</EffectiveDate>
+    <ExpirationDate>2023-12-31</ExpirationDate>
+    <Factor>1.05</Factor>
+  </Rate>
+  <Rate>
+    <PublicID>SER-MARSH-IL</PublicID>
+    <Partner>Marsh Risk</Partner>
+    <State>IL</State>
+    <AgeBand>Adult</AgeBand>
+    <EffectiveDate>2023-06-01</EffectiveDate>
+    <ExpirationDate>2023-12-31</ExpirationDate>
+    <Factor>1.40</Factor>
+  </Rate>
+</SimpleExposureRates>

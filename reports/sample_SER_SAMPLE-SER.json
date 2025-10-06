@@ -1,0 +1,120 @@
+{
+  "summary": {
+    "added": 1,
+    "removed": 1,
+    "updated": 1,
+    "total_before": 3,
+    "total_after": 3,
+    "total_changed": 3
+  },
+  "meta": {
+    "jira": "SAMPLE-SER",
+    "generated_at": "2025-10-06T18:07:35.164535+00:00",
+    "table": "SER",
+    "before_file": {
+      "path": "samples/SER_before.xml",
+      "sha256": "c189ad6cfd4c4f68de6aa6e57b10b0eefb628381eb67055448aaab5441a429f5"
+    },
+    "after_file": {
+      "path": "samples/SER_after.xml",
+      "sha256": "c0dd40920017f5e947c438b7be861d7c3a2391e415d27fc48ff1b9c12e8a424e"
+    },
+    "record_path": ".//Rate",
+    "fields": [
+      "PublicID",
+      "Partner",
+      "State",
+      "AgeBand",
+      "EffectiveDate",
+      "ExpirationDate",
+      "Factor"
+    ],
+    "key_fields": [
+      [
+        "PublicID"
+      ],
+      [
+        "Partner",
+        "State",
+        "AgeBand",
+        "EffectiveDate"
+      ]
+    ],
+    "partners_detected": [
+      "DoorDash",
+      "HelloFresh",
+      "Marsh Risk",
+      "Uber"
+    ],
+    "expected_partners": []
+  },
+  "added": [
+    {
+      "key": "PublicID=SER-MARSH-IL",
+      "key_fields": [
+        "PublicID"
+      ],
+      "before": {},
+      "after": {
+        "PublicID": "SER-MARSH-IL",
+        "Partner": "Marsh Risk",
+        "State": "IL",
+        "AgeBand": "Adult",
+        "EffectiveDate": "2023-06-01",
+        "ExpirationDate": "2023-12-31",
+        "Factor": "1.40"
+      }
+    }
+  ],
+  "removed": [
+    {
+      "key": "PublicID=SER-HELLO-CA",
+      "key_fields": [
+        "PublicID"
+      ],
+      "before": {
+        "PublicID": "SER-HELLO-CA",
+        "Partner": "HelloFresh",
+        "State": "CA",
+        "AgeBand": "Adult",
+        "EffectiveDate": "2023-01-01",
+        "ExpirationDate": "2023-12-31",
+        "Factor": "0.95"
+      },
+      "after": {}
+    }
+  ],
+  "updated": [
+    {
+      "key": "PublicID=SER-UBER-NY",
+      "key_fields": [
+        "PublicID"
+      ],
+      "changes": {
+        "Factor": {
+          "before": "1.15",
+          "after": "1.25"
+        }
+      },
+      "before": {
+        "PublicID": "SER-UBER-NY",
+        "Partner": "Uber",
+        "State": "NY",
+        "AgeBand": "Adult",
+        "EffectiveDate": "2023-01-01",
+        "ExpirationDate": "2023-12-31",
+        "Factor": "1.15"
+      },
+      "after": {
+        "PublicID": "SER-UBER-NY",
+        "Partner": "Uber",
+        "State": "NY",
+        "AgeBand": "Adult",
+        "EffectiveDate": "2023-01-01",
+        "ExpirationDate": "2023-12-31",
+        "Factor": "1.25"
+      }
+    }
+  ],
+  "unexpected_partners": []
+}
