@@ -176,6 +176,47 @@ $report = Get-Content reports/MOB-126703/diff.json -Raw | ConvertFrom-Json
 $report.added | ForEach-Object { $_.key }
 ```
 
+## Single-file HTML report
+
+Generate a polished one-page report with interactive tables by adding `--report html` to
+your run:
+
+```bash
+ser-diff \
+  --before exports/Prod_BEFORE.xml \
+  --after exports/Prod_AFTER.xml \
+  --report html \
+  --jira MOB-126703
+```
+
+The HTML file (`<output-dir>/<out-prefix>/<out-prefix>.html`) contains sticky table headers,
+column sorting, quick filters, partner callouts, and embeds the canonical JSON payload for
+programmatic reuse.
+
+> Preview tip: open the generated HTML file in your browser and capture a screenshot locally.
+> We avoid committing binary screenshots so the repository stays source-only.
+
+## Single-file XLSX report
+
+Prefer Excel? Generate a single workbook that mirrors the HTML report and keeps every
+sheet filterable by passing `--report xlsx`:
+
+```bash
+ser-diff \
+  --before exports/Prod_BEFORE.xml \
+  --after exports/Prod_AFTER.xml \
+  --report xlsx \
+  --jira MOB-126703
+```
+
+The workbook contains `Summary`, `Added`, `Removed`, and `Changed` tabs with frozen header
+rows, auto-filters, partner callouts, and the same threshold diagnostics that appear in
+the console and canonical JSON.
+
+> Preview tip: open the generated workbook in Excel (or LibreOffice) and grab a screenshot
+> locally if needed. Binary assets are excluded from version control for lightweight
+> source tarballs.
+
 ## SOP Snippet (Standard Change)
 
 1. Export BEFORE (SER) from PolicyCenter.

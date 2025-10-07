@@ -13,6 +13,8 @@ from pathlib import Path
 
 from . import __version__
 from .detect import ROW_INDEX_FIELD
+from .report_html import render_html_report
+from .report_xlsx import write_xlsx_report
 
 
 def _local_name(tag: str | None) -> str:
@@ -385,7 +387,7 @@ def diff_files(
     )
 
 
-def _build_canonical_payload(
+def build_canonical_payload(
     result: DiffResult, thresholds: dict[str, object] | None = None
 ) -> dict[str, object]:
     thresholds = thresholds or {}
@@ -480,18 +482,34 @@ def write_reports(
     out_prefix: Path,
     *,
     output_format: str = "all",
+    report_type: str | None = None,
     thresholds: dict[str, object] | None = None,
 ) -> list[str]:
     out_prefix.mkdir(parents=True, exist_ok=True)
     produced: list[str] = []
 
     json_path = out_prefix / "diff.json"
-    payload = _build_canonical_payload(result, thresholds)
+    payload = build_canonical_payload(result, thresholds)
     with json_path.open("w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2)
     produced.append(str(json_path))
 
-    if output_format in {"all", "csv"}:
+    if report_type == "html":
+        html_path = out_prefix / f"{out_prefix.name}.html"
+        html = render_html_report(result, payload, thresholds or {})
+        html_path.write_text(html, encoding="utf-8")
+        produced.append(str(html_path))
+
+    if report_type == "xlsx":
+        xlsx_path = out_prefix / f"{out_prefix.name}.xlsx"
+        write_xlsx_report(result, payload, xlsx_path)
+        produced.append(str(xlsx_path))
+
+    generate_csv = output_format in {"all", "csv"}
+    if report_type == "xlsx" and output_format == "all":
+        generate_csv = False
+
+    if generate_csv:
         csv_prefix = out_prefix / out_prefix.name
         produced.extend(_write_csv_reports(result, csv_prefix))
 

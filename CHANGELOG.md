@@ -12,3 +12,5 @@ All notable changes to this project will be documented in this file.
 - Repo-local configuration loader with `.serdiff.toml` precedence (TOML > YAML > JSON) and a `ser-diff init` generator.
 - CLI now honours config defaults while keeping CLI flags authoritative and supports `--no-fail-on-unexpected`/`--no-strip-ns` overrides.
 - Canonical `diff.json` (schema v1.0) emitted for every run including threshold metadata for CI automation.
+- Single-file HTML reporting via `--report html` with inline assets and an embedded canonical JSON payload.
+- Single-file XLSX reporting via `--report xlsx` that mirrors the HTML report with Summary/Added/Removed/Changed worksheets.

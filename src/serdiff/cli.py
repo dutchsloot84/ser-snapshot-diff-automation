@@ -116,6 +116,12 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Report format to generate",
     )
     parser.add_argument(
+        "--report",
+        choices=["html", "xlsx"],
+        default=None,
+        help="Generate a single-file human-readable report",
+    )
+    parser.add_argument(
         "--excel",
         help="Optional Excel workbook for future validation (stub)",
     )
@@ -654,6 +660,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         result,
         out_prefix,
         output_format=args.format,
+        report_type=args.report,
         thresholds=thresholds,
     )
 
