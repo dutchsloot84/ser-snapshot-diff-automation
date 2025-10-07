@@ -1,4 +1,7 @@
 include README.md
+include CHANGELOG.md
 include LICENSE
 exclude reports/*
 exclude samples/*
+recursive-include docs *.md
+prune docs/assets

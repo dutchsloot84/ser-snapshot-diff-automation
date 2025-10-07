@@ -12,7 +12,7 @@ def write_xml(path: Path, body: str) -> Path:
     return path
 
 
-def test_cli_threshold_failure(tmp_path: Path) -> None:
+def test_cli_threshold_failure(tmp_path: Path, capsys) -> None:
     before = write_xml(
         tmp_path / "before.xml",
         """
@@ -79,10 +79,19 @@ def test_cli_threshold_failure(tmp_path: Path) -> None:
             str(tmp_path),
             "--out-prefix",
             "report",
+            "--report",
+            "html",
         ]
     )
 
     assert exit_code == cli.EXIT_GATES_FAILED
+    captured = capsys.readouterr()
+    assert "Diff summary | added:" in captured.out
+    assert "Warning:" in captured.err
+
+    report_dir = tmp_path / "report"
+    assert (report_dir / "diff.json").exists()
+    assert any(path.suffix == ".html" for path in report_dir.iterdir())
 
 
 def test_expected_partner_detection(tmp_path: Path) -> None:
