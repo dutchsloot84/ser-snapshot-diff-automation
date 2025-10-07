@@ -2,17 +2,16 @@ name: Release
 
 on:
   push:
-    branches: [ main ]
-    tags: [ "v*" ]
-  pull_request:
-    branches: [ main ]
+    tags:
+      - "v*"
   workflow_dispatch: {}
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  build-artifacts:
+  tests:
+    name: Lint and test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -22,48 +21,40 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
 
       - name: Install dependencies
-        run: pip install -e .[dev]
+        run: python -m pip install --upgrade pip && pip install -e .[dev]
 
-      - name: Lint and test
-        run: make lint test
-
-      - name: Generate demo reports
+      - name: Run linters
         run: |
-          mkdir -p reports
-          ser-diff --before samples/SER_before.xml --after samples/SER_after.xml \
-            --table SER --report html --out-prefix reports/demo-ser
-          ser-diff --before samples/EXPOSURE_before.xml --after samples/EXPOSURE_after.xml \
-            --table EXPOSURE --report xlsx --out-prefix reports/demo-exposure
+          ruff check .
+          black --check .
 
-      - name: Upload reports artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ser-diff-demo-artifacts
-          path: reports
-          if-no-files-found: error
+      - name: Run tests
+        run: pytest -q
 
-  release-binaries:
-    name: Build single-file binaries
-    needs: build-artifacts
-    if: startsWith(github.ref, 'refs/tags/')
+  package-gui:
+    name: Build GUI binary
+    needs: tests
     runs-on: ${{ matrix.os }}
-    permissions:
-      contents: write
     strategy:
       matrix:
         include:
           - os: ubuntu-latest
-            asset: ser-diff-linux
-            extension: ""
+            archive: SER-Diff-Linux.zip
+            binary_name: ser-diff-gui
+            binary_path: ser-diff-gui
+            pretty_os: Linux
           - os: macos-latest
-            asset: ser-diff-macos
-            extension: ""
+            archive: SER-Diff-macOS.zip
+            binary_name: "SER Diff"
+            binary_path: "SER Diff.app"
+            pretty_os: macOS
           - os: windows-latest
-            asset: ser-diff-windows.exe
-            extension: ".exe"
+            archive: SER-Diff-Windows.zip
+            binary_name: SER-Diff
+            binary_path: SER-Diff.exe
+            pretty_os: Windows
 
     steps:
       - name: Checkout
@@ -75,35 +66,82 @@ jobs:
           python-version: "3.12"
 
       - name: Install build dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pyinstaller .
+        run: python -m pip install --upgrade pip && pip install -e .[dev] pyinstaller
 
-      - name: Build binary
-        run: pyinstaller --name ser-diff --onefile --console -p src -m serdiff.cli
-
-      - name: Prepare asset
+      - name: Build GUI binary
+        shell: bash
         env:
-          TARGET_NAME: ${{ matrix.asset }}
-          SOURCE_EXT: ${{ matrix.extension }}
+          SERDIFF_GUI_NAME: ${{ matrix.binary_name }}
+        run: pyinstaller --clean pyinstaller/ser-diff-gui.spec
+
+      - name: Package zip artifact
+        shell: bash
+        env:
+          ARCHIVE_NAME: ${{ matrix.archive }}
+          BINARY_PATH: ${{ matrix.binary_path }}
+          PRETTY_OS: ${{ matrix.pretty_os }}
         run: |
           python - <<'PY'
           import os
           import pathlib
           import shutil
+          import textwrap
+          import zipfile
 
           dist = pathlib.Path("dist")
-          dist.mkdir(exist_ok=True)
-          source = dist / f"ser-diff{os.environ['SOURCE_EXT']}"
-          target = dist / os.environ["TARGET_NAME"]
-          if not source.exists():
-              raise SystemExit(f"expected binary at {source} before renaming")
-          if target.exists():
-              target.unlink()
-          shutil.move(source, target)
+          binary_rel = pathlib.Path(os.environ["BINARY_PATH"])
+          binary_source = dist / binary_rel
+          if not binary_source.exists() and not binary_rel.suffix:
+              possible = binary_rel.with_suffix(".app")
+              if (dist / possible).exists():
+                  binary_source = dist / possible
+                  binary_rel = possible
+          if not binary_source.exists():
+              raise SystemExit(f"expected binary at {binary_source}")
+
+          staging = pathlib.Path("release")
+          if staging.exists():
+              shutil.rmtree(staging)
+          staging.mkdir()
+
+          readme = staging / "README_RUN_ME.txt"
+          readme.write_text(
+              textwrap.dedent(
+                  f"""
+                  SER Diff GUI ({os.environ['PRETTY_OS']})
+                  ====================================
+
+                  1. Extract this zip archive.
+                  2. Run the bundled GUI binary to select BEFORE/AFTER XML files.
+                  3. Optional: click "Check Environment" to run ser-diff doctor.
+                  4. Reports are written beneath ~/SER-Diff-Reports/ and the folder opens automatically.
+
+                  Need CLI usage or build instructions? See https://github.com/ser-projects/ser-snapshot-diff-automation#installation
+                  """
+              ).strip(),
+              encoding="utf-8",
+          )
+
+          target = staging / binary_rel.name
+          if binary_source.is_dir():
+              shutil.copytree(binary_source, target)
+          else:
+              shutil.copy2(binary_source, target)
+
+          archive = pathlib.Path(os.environ["ARCHIVE_NAME"])
+          with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
+              for path in staging.rglob("*"):
+                  zf.write(path, path.relative_to(staging))
           PY
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.archive }}
+          path: ${{ matrix.archive }}
+          if-no-files-found: error
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/${{ matrix.asset }}
+          files: ${{ matrix.archive }}

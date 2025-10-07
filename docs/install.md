@@ -1,5 +1,44 @@
 # Installation & Single-File Binaries
 
+## SER Diff GUI (one-file binaries)
+
+### Download and run
+
+1. Grab the latest platform zip from the [Releases page](https://github.com/ser-projects/ser-snapshot-diff-automation/releases).
+2. Extract the archive and double-click the binary (`SER-Diff.exe`, `SER Diff.app`, or `ser-diff-gui`).
+3. Select BEFORE and AFTER XML files, confirm the optional Jira ticket, and click **Run Diff**. The reports folder opens automatically.
+4. Use **Check Environment** to run `ser-diff doctor` if you encounter issues.
+
+### Build locally with PyInstaller
+
+All commands assume Python 3.12 is available. The spec reads the desired binary name from `SERDIFF_GUI_NAME` to account for platform-specific naming.
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install .[dev] pyinstaller
+```
+
+#### Windows (PowerShell)
+
+```powershell
+$env:SERDIFF_GUI_NAME = "SER-Diff"
+pyinstaller --clean pyinstaller/ser-diff-gui.spec
+```
+
+#### macOS (Terminal)
+
+```bash
+SERDIFF_GUI_NAME="SER Diff" pyinstaller --clean pyinstaller/ser-diff-gui.spec
+```
+
+#### Linux (Terminal)
+
+```bash
+SERDIFF_GUI_NAME="ser-diff-gui" pyinstaller --clean pyinstaller/ser-diff-gui.spec
+```
+
+PyInstaller writes the binary to `dist/<name>/`. Package the executable (and the generated `README_RUN_ME.txt` from CI) into a zip when distributing manually.
+
 ## pipx (recommended)
 
 ```bash
@@ -37,38 +76,6 @@ pip install -e .[dev]
 ser-diff doctor
 ```
 
-## Optional single-file binaries
-
-Environments without Python can rely on PyInstaller or uv to produce standalone executables.
-
-### PyInstaller
-
-```bash
-pip install --upgrade pip
-pip install pyinstaller
-pyinstaller --name ser-diff --onefile --console -p src -m serdiff.cli
-```
-
-Artifacts land in `dist/`. Rename per platform if desired (e.g., `ser-diff-linux`, `ser-diff-darwin`). Validate with `./dist/ser-diff --version`.
-
-### uv
-
-[`uv`](https://github.com/astral-sh/uv) can bundle the tool quickly when Python 3.12 is present:
-
-```bash
-uv tool install pyinstaller
-uv pip install .
-pyinstaller --name ser-diff --onefile --console -p src -m serdiff.cli
-```
-
-### Windows notes
-
-Run the same command set in PowerShell. The resulting `dist/ser-diff.exe` can be renamed to include the OS suffix. Verify with:
-
-```powershell
-./dist/ser-diff.exe doctor
-```
-
 ## Release automation
 
-GitHub Actions builds and uploads macOS, Linux, and Windows one-file binaries whenever a tagged release is pushed. See [`.github/workflows/release.yml`](../.github/workflows/release.yml) for the reference implementation.
+GitHub Actions builds and uploads macOS, Linux, and Windows SER Diff GUI one-file binaries whenever a tagged release is pushed. See [`.github/workflows/release.yml`](../.github/workflows/release.yml) for the reference implementation.

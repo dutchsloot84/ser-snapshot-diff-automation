@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Tkinter GUI runner (`serdiff.gui_runner`) that wraps the existing diff engine, remembers the last directory, integrates `ser-diff doctor`, and auto-opens the generated reports folder.
+- Programmatic entrypoints (`serdiff.entrypoints`) for running diffs and doctor checks from the GUI and future automation.
+- PyInstaller spec (`pyinstaller/ser-diff-gui.spec`) plus release automation to build one-file GUI binaries for Windows, macOS, and Linux with zipped artifacts per platform.
+- GUI smoke tests covering helper utilities and a headless launch path.
 - `ser-diff doctor` command that validates Python, OS, XML parser support, and report directory permissions.
 - pipx-first installation guidance and installation doctor documentation.
 - Release automation to build and upload single-file binaries on tagged releases.
@@ -22,5 +26,6 @@ All notable changes to this project will be documented in this file.
 - Safely escape embedded JSON in the HTML report to prevent premature `</script>` termination and retain Unicode line separators.
 
 ### Docs
+- README quick-start for the GUI runner and refreshed installation notes covering download/build steps for one-file binaries.
 - Refreshed README-first documentation with installation paths, quick-start guides, single-file report coverage, canonical JSON usage, guardrails, SOP, and troubleshooting guidance aligned to the current CLI.
 - Updated `docs/install.md` for pipx/venv workflows and binary build steps, and introduced `docs/reports.md` covering HTML/XLSX features and JSON extraction tips.
