@@ -23,16 +23,18 @@
 ## GUI Runner
 
 1. Download the latest "SER Diff" GUI zip for your platform from [GitHub Releases](https://github.com/ser-projects/ser-snapshot-diff-automation/releases).
-2. Extract the archive and double-click the bundled binary (`SER-Diff.exe`, `SER Diff.app`, or `ser-diff-gui`).
+2. Extract the archive and double-click the bundled binary (`SER-Diff.exe`, `SER-Diff.app`, or `ser-diff-gui`).
 3. Choose BEFORE and AFTER XML exports. The Jira ID field is automatically pre-filled if `.serdiff.toml/.yaml/.json` is present in the working directory.
 4. Click **Run Diff**. A timestamped folder beneath `~/SER-Diff-Reports/` is created, the primary report opens directly in your file explorer (with a folder fallback when required), and any guardrail warnings are highlighted in the GUI.
 5. Click **Check Environment** any time to run `ser-diff doctor` and confirm local prerequisites.
+
+> **macOS Gatekeeper:** On the first launch, right-click `SER-Diff.app`, choose **Open**, and acknowledge the unidentified developer prompt.
 
 ### Launch options
 
 - `ser-diff-gui` (installed via `pipx install ser-diff` or `pip install .`).
 - `python -m serdiff.gui_runner` from a virtual environment.
-- One-file binaries built with PyInstaller (`SER-Diff.exe`, `SER Diff.app`, `ser-diff-gui`).
+- One-file binaries built with PyInstaller (`SER-Diff.exe`, `SER-Diff.app`, `ser-diff-gui`).
 
 For build instructions and advanced packaging notes, see [docs/install.md](docs/install.md).
 
@@ -263,7 +265,7 @@ Integrate `ser-diff` into GitHub Actions or similar pipelines. Example excerpt:
 
 Guardrail breaches return exit code `2`. Configure CI to treat `2` as failure while still uploading artifacts for review.
 
-Tagged releases can reuse the workflow in [`.github/workflows/release.yml`](.github/workflows/release.yml) to build single-file binaries.
+Tagged releases can reuse the workflow in [`.github/workflows/release.yml`](.github/workflows/release.yml) to build single-file binaries. The release job now invokes PyInstaller directly with `src/serdiff/gui_runner.py`, performs a preflight check for the script, and disables matrix fail-fast so Windows, macOS, and Linux builds succeed or fail independently.
 
 ## Standard Change SOP
 
@@ -310,10 +312,10 @@ python -m pip install -e .[dev] pyinstaller
 Then package the Tkinter GUI with PyInstaller:
 
 - **Windows (PowerShell):** `pyinstaller --onefile --windowed -n "SER-Diff" src/serdiff/gui_runner.py`
-- **macOS:** `pyinstaller --onefile --windowed -n "SER Diff.app" src/serdiff/gui_runner.py`
+- **macOS:** `pyinstaller --onefile --windowed -n "SER-Diff" src/serdiff/gui_runner.py`
 - **Linux:** `pyinstaller --onefile --windowed -n "ser-diff-gui" src/serdiff/gui_runner.py`
 
-Artifacts appear under `dist/` ready to zip and share.
+Artifacts appear under `dist/` ready to zip and share (`SER-Diff.exe`, `SER-Diff.app`, and `ser-diff-gui`).
 
 ### Publish release (GUI binaries)
 
@@ -326,7 +328,7 @@ Artifacts appear under `dist/` ready to zip and share.
    git push origin vX.Y.Z
    ```
 
-4. GitHub Actions uploads `SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, and `SER-Diff-Linux.zip` to the release. Verify the assets and update README links if the repository location changes.
+4. GitHub Actions uploads `SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, and `SER-Diff-Linux.zip` to the release. Each job fails early if `src/serdiff/gui_runner.py` is missing, and the matrix keeps running even if one OS fails. Verify the assets and update README links if the repository location changes.
 
 Optional hooks:
 

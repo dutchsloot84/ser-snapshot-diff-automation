@@ -38,23 +38,18 @@ jobs:
     needs: tests
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             archive: SER-Diff-Linux.zip
             binary_name: ser-diff-gui
-            binary_path: ser-diff-gui
-            pretty_os: Linux
           - os: macos-latest
             archive: SER-Diff-macOS.zip
-            binary_name: "SER Diff"
-            binary_path: "SER Diff.app"
-            pretty_os: macOS
+            binary_name: SER-Diff
           - os: windows-latest
             archive: SER-Diff-Windows.zip
             binary_name: SER-Diff
-            binary_path: SER-Diff.exe
-            pretty_os: Windows
 
     steps:
       - name: Checkout
@@ -68,71 +63,44 @@ jobs:
       - name: Install build dependencies
         run: python -m pip install --upgrade pip && pip install -e .[dev] pyinstaller
 
+      - name: Preflight: ensure GUI script exists
+        shell: bash
+        run: |
+          set -e
+          test -f "src/serdiff/gui_runner.py" || { echo "ERROR: src/serdiff/gui_runner.py not found"; exit 1; }
+          echo "OK: src/serdiff/gui_runner.py present"
+
       - name: Build GUI binary
         shell: bash
         env:
-          SERDIFF_GUI_NAME: ${{ matrix.binary_name }}
-        run: pyinstaller --clean pyinstaller/ser-diff-gui.spec
-
-      - name: Package zip artifact
-        shell: bash
-        env:
           ARCHIVE_NAME: ${{ matrix.archive }}
-          BINARY_PATH: ${{ matrix.binary_path }}
-          PRETTY_OS: ${{ matrix.pretty_os }}
+          BINARY_NAME: ${{ matrix.binary_name }}
         run: |
-          python - <<'PY'
-          import os
-          import pathlib
-          import shutil
-          import textwrap
-          import zipfile
-
-          dist = pathlib.Path("dist")
-          binary_rel = pathlib.Path(os.environ["BINARY_PATH"])
-          binary_source = dist / binary_rel
-          if not binary_source.exists() and not binary_rel.suffix:
-              possible = binary_rel.with_suffix(".app")
-              if (dist / possible).exists():
-                  binary_source = dist / possible
-                  binary_rel = possible
-          if not binary_source.exists():
-              raise SystemExit(f"expected binary at {binary_source}")
-
-          staging = pathlib.Path("release")
-          if staging.exists():
-              shutil.rmtree(staging)
-          staging.mkdir()
-
-          readme = staging / "README_RUN_ME.txt"
-          readme.write_text(
-              textwrap.dedent(
-                  f"""
-                  SER Diff GUI ({os.environ['PRETTY_OS']})
-                  ====================================
-
-                  1. Extract this zip archive.
-                  2. Run the bundled GUI binary to select BEFORE/AFTER XML files.
-                  3. Optional: click "Check Environment" to run ser-diff doctor.
-                  4. Reports are written beneath ~/SER-Diff-Reports/ and the folder opens automatically.
-
-                  Need CLI usage or build instructions? See https://github.com/ser-projects/ser-snapshot-diff-automation#installation
-                  """
-              ).strip(),
-              encoding="utf-8",
-          )
-
-          target = staging / binary_rel.name
-          if binary_source.is_dir():
-              shutil.copytree(binary_source, target)
-          else:
-              shutil.copy2(binary_source, target)
-
-          archive = pathlib.Path(os.environ["ARCHIVE_NAME"])
-          with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
-              for path in staging.rglob("*"):
-                  zf.write(path, path.relative_to(staging))
-          PY
+          set -e
+          mkdir -p upload
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            pyinstaller --onefile --windowed -n "$BINARY_NAME" src/serdiff/gui_runner.py
+            cp "dist/${BINARY_NAME}.exe" upload/
+            cat <<'EOF_WIN' > upload/README_RUN_ME.txt
+Double-click SER-Diff.exe
+Pick BEFORE/AFTER XML
+EOF_WIN
+            powershell -command "Compress-Archive -Path upload\* -DestinationPath ${ARCHIVE_NAME}"
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            pyinstaller --onefile --windowed -n "$BINARY_NAME" src/serdiff/gui_runner.py
+            cp -R "dist/${BINARY_NAME}.app" upload/
+            cat <<'EOF_MAC' > upload/README_RUN_ME.txt
+Open SER-Diff.app (Gatekeeper may prompt)
+EOF_MAC
+            (cd upload && zip -r "../${ARCHIVE_NAME}" .)
+          else
+            pyinstaller --onefile --windowed -n "$BINARY_NAME" src/serdiff/gui_runner.py
+            cp "dist/${BINARY_NAME}" upload/
+            cat <<'EOF_LINUX' > upload/README_RUN_ME.txt
+./ser-diff-gui
+EOF_LINUX
+            (cd upload && zip -r "../${ARCHIVE_NAME}" .)
+          fi
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4

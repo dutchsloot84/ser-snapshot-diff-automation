@@ -5,9 +5,11 @@
 ### Download and run
 
 1. Grab the latest platform zip from the [Releases page](https://github.com/ser-projects/ser-snapshot-diff-automation/releases).
-2. Extract the archive and double-click the binary (`SER-Diff.exe`, `SER Diff.app`, or `ser-diff-gui`).
+2. Extract the archive and double-click the binary (`SER-Diff.exe`, `SER-Diff.app`, or `ser-diff-gui`).
 3. Select BEFORE and AFTER XML files, confirm the optional Jira ticket, and click **Run Diff**. The generated HTML/XLSX report opens automatically (with a folder fallback if the OS cannot launch the file directly).
 4. Use **Check Environment** to run `ser-diff doctor` if you encounter issues.
+
+> **macOS Gatekeeper:** On first launch, right-click `SER-Diff.app`, choose **Open**, and confirm the prompt if macOS warns about an unidentified developer.
 
 ### Build GUI locally with PyInstaller
 
@@ -31,7 +33,7 @@ pyinstaller --onefile --windowed -n "SER-Diff" src/serdiff/gui_runner.py
 #### macOS (Terminal)
 
 ```bash
-pyinstaller --onefile --windowed -n "SER Diff.app" src/serdiff/gui_runner.py
+pyinstaller --onefile --windowed -n "SER-Diff" src/serdiff/gui_runner.py
 ```
 
 #### Linux (Terminal)
@@ -40,7 +42,7 @@ pyinstaller --onefile --windowed -n "SER Diff.app" src/serdiff/gui_runner.py
 pyinstaller --onefile --windowed -n "ser-diff-gui" src/serdiff/gui_runner.py
 ```
 
-PyInstaller places the finished binaries under `dist/`. Zip each platform output for distribution (the GitHub Release workflow names the archives `SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, and `SER-Diff-Linux.zip`).
+PyInstaller places the finished binaries under `dist/`. Zip each platform output for distribution (the GitHub Release workflow names the archives `SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, and `SER-Diff-Linux.zip`). The CI job invokes PyInstaller directly with `src/serdiff/gui_runner.py`, so keep that path stable—if the script moves, update the workflow and rerun the preflight check locally before tagging.
 
 ## pipx (recommended)
 
@@ -90,12 +92,13 @@ ser-diff doctor
    git push origin vX.Y.Z
    ```
 
-4. GitHub Actions builds and uploads the Windows, macOS, and Linux GUI zips (`SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, `SER-Diff-Linux.zip`) to the release.
+4. GitHub Actions builds and uploads the Windows, macOS, and Linux GUI zips (`SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, `SER-Diff-Linux.zip`) to the release. Each matrix job sets `fail-fast: false`, so other platforms continue even if one build fails.
 5. Validate the assets on the Releases page and update documentation links if the organization or repository name changes.
 
 ### Troubleshooting
 
 - *ImportError: attempted relative import with no known parent package* → rebuild after ensuring all GUI imports use the `serdiff.` prefix (absolute imports).
 - *Windows SmartScreen warning* → select **More info → Run anyway** until code signing is available.
+- *ERROR: src/serdiff/gui_runner.py not found* during CI → verify the script exists at that path and re-run the workflow; the preflight step intentionally fails fast while the matrix keeps running for other OS targets.
 
 Release automation details live in [`.github/workflows/release.yml`](../.github/workflows/release.yml).
