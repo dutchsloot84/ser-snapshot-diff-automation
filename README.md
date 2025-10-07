@@ -13,12 +13,14 @@
 
 ## Installation
 
-Use a virtual environment or `pipx`:
+Use `pipx` for isolated installs, or fall back to a virtual environment:
 
 ```bash
-python -m pip install --upgrade pip setuptools wheel
+pipx install ser-diff
+# or from a checkout
 pipx install .
-# or
+
+python -m pip install --upgrade pip setuptools wheel
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .[dev]
@@ -39,6 +41,14 @@ pip install -e .[dev]
 ```
 
 ## Quick Start
+
+### Check your environment
+
+```bash
+ser-diff doctor
+```
+
+The doctor command prints version information, verifies XML parsing support, and ensures the default `reports/` directory is writable.
 
 ### Auto Mode (recommended)
 
@@ -97,6 +107,75 @@ ser-diff \
   --out-prefix custom_diff
 ```
 
+## Config
+
+`ser-diff` automatically loads configuration from `.serdiff.toml` in your working directory
+(`.serdiff.yaml`/`.serdiff.json` act as fallbacks). Generate a commented template with:
+
+```bash
+ser-diff init
+```
+
+Every CLI flag still takes priority over the config file. A typical TOML configuration looks
+like this:
+
+```toml
+[jira]
+ticket = "ENG-123"
+
+[io]
+output_dir = "reports"
+out_prefix = "MOB-126703"
+
+[guards]
+expected_partners = ["PartnerOne", "PartnerTwo"]
+max_added = 0
+max_removed = 0
+fail_on_unexpected = true
+
+[preset]
+mode = "SER"
+
+## Uncomment the section below when using custom record definitions.
+#[custom]
+#record_path = ".//CustomRecord"
+#record_localname = "CustomRecord"
+#keys = ["PublicID", "Partner"]
+#fields = ["PublicID", "Partner", "State", "Factor"]
+#strip_ns = false
+```
+
+With a populated config you can run the short form:
+
+```bash
+ser-diff --before BEFORE.xml --after AFTER.xml
+```
+
+## Programmatic use
+
+Every run writes a canonical `diff.json` (schema version `1.0`) alongside CSV exports in
+`<output-dir>/<out-prefix>/`. Use standard tools to automate validations:
+
+```bash
+# Show the change summary with jq
+jq '.summary' reports/MOB-126703/diff.json
+```
+
+```python
+# Inspect threshold violations in Python
+import json
+from pathlib import Path
+
+payload = json.loads(Path("reports/MOB-126703/diff.json").read_text())
+print(payload["summary"]["thresholds"]["violations"])
+```
+
+```powershell
+# List added keys in PowerShell
+$report = Get-Content reports/MOB-126703/diff.json -Raw | ConvertFrom-Json
+$report.added | ForEach-Object { $_.key }
+```
+
 ## SOP Snippet (Standard Change)
 
 1. Export BEFORE (SER) from PolicyCenter.
@@ -129,20 +208,24 @@ Sample SER and Exposure XML files live in `samples/`. Run `make demo` to generat
 
 ```bash
 make venv      # create a virtual environment with dev deps
-make fmt       # run black + ruff --fix
-make lint      # run ruff linting
-make test      # run pytest
+make fmt       # run black + ruff --fix across the repo
+make lint      # run ruff check and black --check
+make test      # run pytest -q
 make demo      # build sample reports
+```
+
+To auto-format before committing, install the pre-commit hooks:
+
+```bash
+pip install pre-commit
+pre-commit install
 ```
 
 CI runs linting, tests, and demo generation on Python 3.10 and 3.12. Reports are uploaded as artifacts for traceability.
 
 ## Changelog
 
-### Unreleased
-
-- Auto Mode now detects schemas, handles namespaces, and infers unique keys without crashing on duplicates.
-- CLI adds `--output-dir`, `--explain`, and `--strict`, printing a concise summary with friendlier zero-row diagnostics.
+See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 ## License
 
