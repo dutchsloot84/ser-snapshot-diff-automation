@@ -20,6 +20,12 @@
 ## Installation
 
 ### pipx (recommended)
+- Streaming XML reader powered by `xml.etree.ElementTree.iterparse` for large files.
+- Auto Mode detects schemas/namespaces and infers unique keys; inspect results with `ser-diff explain` or the `--explain` flag.
+- Presets for SER and Exposure Types tables plus a fully custom mode.
+- Field-level diffing with auditable JSON + CSV outputs.
+- Threshold and partner guard rails for change management.
+- Ready for CI: linting, tests, and demo artifact generation.
 
 ```bash
 python -m pip install --upgrade pip
