@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Safely escape embedded JSON in the HTML report to prevent premature `</script>` termination and retain Unicode line separators.
+- GUI now opens the generated primary report (or its folder) reliably and `DiffRunResult` exposes concrete report paths for automation consumers.
 
 ### Docs
 - README quick-start for the GUI runner and refreshed installation notes covering download/build steps for one-file binaries.

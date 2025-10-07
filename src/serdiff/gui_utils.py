@@ -18,8 +18,8 @@ STATE_DIR = Path.home() / ".serdiff_gui"
 STATE_PATH = STATE_DIR / "state.json"
 
 
-def open_folder(path: str | Path) -> None:
-    """Open *path* with the system file explorer."""
+def open_path(path: str | Path) -> None:
+    """Open *path* (file or directory) with the system file explorer."""
 
     resolved = str(Path(path).expanduser().resolve())
     if sys.platform.startswith("win"):
@@ -28,6 +28,15 @@ def open_folder(path: str | Path) -> None:
         subprocess.run(["open", resolved], check=False)
     else:
         subprocess.run(["xdg-open", resolved], check=False)
+
+
+def open_folder(path: str | Path) -> None:
+    """Open a directory path with the system file explorer."""
+
+    target = Path(path).expanduser()
+    if target.is_file():
+        target = target.parent
+    open_path(target)
 
 
 def get_default_output_dir(stamp: str | None = None) -> Path:
@@ -138,6 +147,7 @@ def remember_last_directory(path: str | Path) -> None:
 
 __all__ = [
     "STATE_PATH",
+    "open_path",
     "open_folder",
     "get_default_output_dir",
     "load_prefill_jira_ticket",

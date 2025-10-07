@@ -2,7 +2,7 @@
 
 > Stream, compare, and report PolicyCenter SER/Exposure Types changes with single-file HTML/XLSX artifacts and canonical JSON ready for CI.
 
-**New:** Download the SER Diff GUI, double-click the binary, pick your BEFORE/AFTER XML files, optionally supply a Jira ID, and click **Run Diff**. The reports folder opens automatically.
+**New:** Download the SER Diff GUI, double-click the binary, pick your BEFORE/AFTER XML files, optionally supply a Jira ID, and click **Run Diff**. The generated HTML/XLSX report opens automatically (falling back to the containing folder if needed).
 
 - [GUI Runner](#gui-runner)
 - [Installation](#installation)
@@ -25,7 +25,7 @@
 1. Download the latest "SER Diff" GUI zip for your platform from [GitHub Releases](https://github.com/ser-projects/ser-snapshot-diff-automation/releases).
 2. Extract the archive and double-click the bundled binary (`SER-Diff.exe`, `SER Diff.app`, or `ser-diff-gui`).
 3. Choose BEFORE and AFTER XML exports. The Jira ID field is automatically pre-filled if `.serdiff.toml/.yaml/.json` is present in the working directory.
-4. Click **Run Diff**. A timestamped folder beneath `~/SER-Diff-Reports/` is created, the report opens in your file explorer, and any guardrail warnings are highlighted in the GUI.
+4. Click **Run Diff**. A timestamped folder beneath `~/SER-Diff-Reports/` is created, the primary report opens directly in your file explorer (with a folder fallback when required), and any guardrail warnings are highlighted in the GUI.
 5. Click **Check Environment** any time to run `ser-diff doctor` and confirm local prerequisites.
 
 For build instructions and advanced packaging notes, see [docs/install.md](docs/install.md).

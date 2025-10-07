@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import io
 from contextlib import redirect_stderr, redirect_stdout
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -29,11 +29,14 @@ class DiffRunResult:
 
     exit_code: int
     output_dir: Path
-    produced: list[str]
-    summary: dict[str, Any]
-    guardrail_messages: list[str]
-    strict_issues: list[str]
-    warnings: list[str]
+    primary_report: Path | None
+    json_path: Path | None
+    extra_reports: list[Path] = field(default_factory=list)
+    produced: list[Path] = field(default_factory=list)
+    summary: dict[str, Any] = field(default_factory=dict)
+    guardrail_messages: list[str] = field(default_factory=list)
+    strict_issues: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
 
 def _build_default_namespace(
@@ -125,7 +128,10 @@ def run_diff(
     Returns
     -------
     DiffRunResult
-        Metadata about the run including exit code and generated artifact paths.
+        Metadata about the run including exit code and the concrete output paths that
+        were generated. ``output_dir`` always points to an existing directory and
+        ``primary_report``/``json_path`` resolve to the main artefacts when
+        available.
     """
 
     before_path = Path(before).expanduser().resolve()
@@ -174,6 +180,8 @@ def run_diff(
         max_removed=args.max_removed,
     )
 
+    out_prefix.mkdir(parents=True, exist_ok=True)
+
     produced = write_reports(
         result,
         out_prefix,
@@ -181,6 +189,22 @@ def run_diff(
         report_type=args.report,
         thresholds=thresholds,
     )
+
+    produced_paths = [Path(path).expanduser().resolve() for path in produced]
+
+    primary_report: Path | None = None
+    json_path: Path | None = None
+    extra_reports: list[Path] = []
+
+    for path in produced_paths:
+        suffix = path.suffix.lower()
+        if path.name == "diff.json":
+            json_path = path
+            continue
+        if suffix in {".html", ".xlsx"} and primary_report is None:
+            primary_report = path
+            continue
+        extra_reports.append(path)
 
     strict_issues = _gather_strict_issues(result.summary, setup)
 
@@ -194,8 +218,11 @@ def run_diff(
 
     return DiffRunResult(
         exit_code=exit_code,
-        output_dir=out_prefix,
-        produced=produced,
+        output_dir=out_prefix.expanduser().resolve(),
+        primary_report=primary_report,
+        json_path=json_path,
+        extra_reports=extra_reports,
+        produced=produced_paths,
         summary=dict(result.summary),
         guardrail_messages=list(threshold_messages),
         strict_issues=strict_issues,

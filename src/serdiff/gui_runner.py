@@ -12,7 +12,7 @@ from .gui_utils import (
     get_default_output_dir,
     get_last_directory,
     load_prefill_jira_ticket,
-    open_folder,
+    open_path,
     remember_last_directory,
 )
 
@@ -56,7 +56,32 @@ def _update_run_state(button: tk.Button, before: tk.StringVar, after: tk.StringV
 
 
 def _handle_result(result: DiffRunResult, status: StatusBanner) -> None:
-    open_folder(result.output_dir)
+    opened_target = False
+    try:
+        if result.primary_report and Path(result.primary_report).exists():
+            open_path(result.primary_report)
+            opened_target = True
+        elif result.output_dir and Path(result.output_dir).is_dir():
+            open_path(result.output_dir)
+            opened_target = True
+        else:
+            candidate: Path | None = None
+            if result.primary_report:
+                candidate = Path(result.primary_report).expanduser().parent
+            elif result.output_dir:
+                candidate = Path(result.output_dir).expanduser().parent
+            if candidate and candidate.exists():
+                open_path(candidate)
+                opened_target = True
+    except Exception as exc:  # pragma: no cover - defensive guard
+        messagebox.showwarning("Could not open report", str(exc))
+    else:
+        if not opened_target:
+            messagebox.showwarning(
+                "Could not open report",
+                "Report generated but could not be opened automatically.",
+            )
+
     if result.exit_code != 0:
         status.show(
             "Guardrails triggered; see Summary in the report.",
@@ -67,7 +92,8 @@ def _handle_result(result: DiffRunResult, status: StatusBanner) -> None:
         )
     else:
         status.show("Reports created", kind="info")
-        messagebox.showinfo("Reports created", f"Reports generated at\n{result.output_dir}")
+        suffix = " The output was opened in your file browser." if opened_target else ""
+        messagebox.showinfo("Reports created", f"Report generated.{suffix}")
 
 
 def _run_doctor_dialog(status: StatusBanner) -> None:  # pragma: no cover - Tk side effect

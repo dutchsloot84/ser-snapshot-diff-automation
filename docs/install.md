@@ -6,7 +6,7 @@
 
 1. Grab the latest platform zip from the [Releases page](https://github.com/ser-projects/ser-snapshot-diff-automation/releases).
 2. Extract the archive and double-click the binary (`SER-Diff.exe`, `SER Diff.app`, or `ser-diff-gui`).
-3. Select BEFORE and AFTER XML files, confirm the optional Jira ticket, and click **Run Diff**. The reports folder opens automatically.
+3. Select BEFORE and AFTER XML files, confirm the optional Jira ticket, and click **Run Diff**. The generated HTML/XLSX report opens automatically (with a folder fallback if the OS cannot launch the file directly).
 4. Use **Check Environment** to run `ser-diff doctor` if you encounter issues.
 
 ### Build locally with PyInstaller

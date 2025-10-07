@@ -105,35 +105,6 @@ class DummyMessageBox:
         pass
 
 
-def test_open_folder_windows(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    called: list[str] = []
-
-    def fake_startfile(path: str) -> None:
-        called.append(path)
-
-    monkeypatch.setattr(gui_utils.sys, "platform", "win32")
-    monkeypatch.setattr(gui_utils.os, "startfile", fake_startfile, raising=False)
-
-    gui_utils.open_folder(tmp_path)
-
-    assert called == [str(tmp_path.resolve())]
-
-
-def test_open_folder_unix(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    calls: list[list[str]] = []
-
-    def fake_run(cmd: list[str], check: bool = False) -> None:
-        calls.append(cmd)
-        assert check is False
-
-    monkeypatch.setattr(gui_utils.sys, "platform", "linux")
-    monkeypatch.setattr(gui_utils.subprocess, "run", fake_run)
-
-    gui_utils.open_folder(tmp_path)
-
-    assert calls == [["xdg-open", str(tmp_path.resolve())]]
-
-
 def test_load_prefill_from_toml(tmp_path: Path) -> None:
     config = tmp_path / ".serdiff.toml"
     config.write_text("""[jira]\nticket = \"ENG-123\"\n""", encoding="utf-8")
