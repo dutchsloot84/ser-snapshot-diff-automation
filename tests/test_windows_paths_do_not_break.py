@@ -52,4 +52,6 @@ def test_windows_style_output_dir(tmp_path: Path, capsys, monkeypatch) -> None:
     assert "reports\\windows" in captured.out
     output_dir = Path("reports\\windows")
     assert output_dir.exists()
-    assert (output_dir / "win.json").exists()
+    report_root = output_dir / "win"
+    assert report_root.exists()
+    assert (report_root / "diff.json").exists()

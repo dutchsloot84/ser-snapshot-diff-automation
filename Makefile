@@ -9,14 +9,15 @@ venv:
 	$(VENV)/bin/pip install -e .[dev]
 
 fmt:
-	$(PYTHON) -m black src/serdiff tests
-	$(PYTHON) -m ruff check src/serdiff tests --fix
+	black .
+	ruff check --fix .
 
 lint:
-	$(PYTHON) -m ruff check src/serdiff tests
+	ruff check .
+	black --check .
 
 test:
-	$(PYTHON) -m pytest
+	pytest -q
 
 demo:
 	ser-diff --before samples/SER_before.xml --after samples/SER_after.xml --table SER --out-prefix reports/demo_SER --jira DEMO-SER

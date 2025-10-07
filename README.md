@@ -5,7 +5,7 @@
 ## Features
 
 - Streaming XML reader powered by `xml.etree.ElementTree.iterparse` for large files.
-- Auto Mode detects schemas/namespaces and infers unique keys with optional `--explain` output.
+- Auto Mode detects schemas/namespaces and infers unique keys; inspect results with `ser-diff explain` or the `--explain` flag.
 - Presets for SER and Exposure Types tables plus a fully custom mode.
 - Field-level diffing with auditable JSON + CSV outputs.
 - Threshold and partner guard rails for change management.
@@ -13,12 +13,14 @@
 
 ## Installation
 
-Use a virtual environment or `pipx`:
+Use `pipx` for isolated installs, or fall back to a virtual environment:
 
 ```bash
-python -m pip install --upgrade pip setuptools wheel
+pipx install ser-diff
+# or from a checkout
 pipx install .
-# or
+
+python -m pip install --upgrade pip setuptools wheel
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .[dev]
@@ -40,6 +42,14 @@ pip install -e .[dev]
 
 ## Quick Start
 
+### Check your environment
+
+```bash
+ser-diff doctor
+```
+
+The doctor command prints version information, verifies XML parsing support, and ensures the default `reports/` directory is writable.
+
 ### Auto Mode (recommended)
 
 ```bash
@@ -56,7 +66,26 @@ Auto Mode is enabled automatically whenever you omit `--table`/`--record-path`. 
 - Detects PolicyCenter schemas (SER vs Exposure Types) by probing element local names.
 - Handles default or prefixed namespaces without additional flags; `--strip-ns` is available for tricky files.
 - Infers a stable key: `PublicID` when unique, otherwise a composite that is extended with additional fields (and, if required, a row counter) to avoid duplicate-key crashes.
-- Prints a one-line summary plus friendly zero-row diagnostics; `--explain` reveals the detected schema, fields, key candidates, and namespace status.
+- Emits a compact summary line with counts and guardrail warnings. Run `ser-diff explain` (or add `--explain`) to reveal the detected schema, fields, key candidates, namespace status, and even machine-readable diagnostics via `--json`.
+
+### Explain the detected schema
+
+Use the dedicated subcommand when you want to inspect detection heuristics without writing
+reports:
+
+```bash
+ser-diff explain \
+  --before exports/Prod_BEFORE.xml \
+  --after  exports/Prod_AFTER.xml \
+  --auto
+```
+
+Add `--json` to emit a machine-readable payload that mirrors the Diagnostics section in the
+HTML report:
+
+```bash
+ser-diff explain --before BEFORE.xml --after AFTER.xml --auto --json
+```
 
 ### PolicyCenter SER (explicit preset)
 
@@ -97,6 +126,118 @@ ser-diff \
   --out-prefix custom_diff
 ```
 
+## Config
+
+`ser-diff` automatically loads configuration from `.serdiff.toml` in your working directory
+(`.serdiff.yaml`/`.serdiff.json` act as fallbacks). Generate a commented template with:
+
+```bash
+ser-diff init
+```
+
+Every CLI flag still takes priority over the config file. A typical TOML configuration looks
+like this:
+
+```toml
+[jira]
+ticket = "ENG-123"
+
+[io]
+output_dir = "reports"
+out_prefix = "MOB-126703"
+
+[guards]
+expected_partners = ["PartnerOne", "PartnerTwo"]
+max_added = 0
+max_removed = 0
+fail_on_unexpected = true
+
+[preset]
+mode = "SER"
+
+## Uncomment the section below when using custom record definitions.
+#[custom]
+#record_path = ".//CustomRecord"
+#record_localname = "CustomRecord"
+#keys = ["PublicID", "Partner"]
+#fields = ["PublicID", "Partner", "State", "Factor"]
+#strip_ns = false
+```
+
+With a populated config you can run the short form:
+
+```bash
+ser-diff --before BEFORE.xml --after AFTER.xml
+```
+
+## Programmatic use
+
+Every run writes a canonical `diff.json` (schema version `1.0`) alongside CSV exports in
+`<output-dir>/<out-prefix>/`. Use standard tools to automate validations:
+
+```bash
+# Show the change summary with jq
+jq '.summary' reports/MOB-126703/diff.json
+```
+
+```python
+# Inspect threshold violations in Python
+import json
+from pathlib import Path
+
+payload = json.loads(Path("reports/MOB-126703/diff.json").read_text())
+print(payload["summary"]["thresholds"]["violations"])
+```
+
+```powershell
+# List added keys in PowerShell
+$report = Get-Content reports/MOB-126703/diff.json -Raw | ConvertFrom-Json
+$report.added | ForEach-Object { $_.key }
+```
+
+## Single-file HTML report
+
+Generate a polished one-page report with interactive tables by adding `--report html` to
+your run:
+
+```bash
+ser-diff \
+  --before exports/Prod_BEFORE.xml \
+  --after exports/Prod_AFTER.xml \
+  --report html \
+  --jira MOB-126703
+```
+
+The HTML file (`<output-dir>/<out-prefix>/<out-prefix>.html`) contains sticky table headers,
+column sorting, quick filters, partner callouts, and embeds the canonical JSON payload for
+programmatic reuse. JSON is embedded safely in a `<script type="application/json">` tag with
+`</` and the U+2028/U+2029 line separators escaped so browsers cannot terminate the script
+early.
+
+> Preview tip: open the generated HTML file in your browser and capture a screenshot locally.
+> We avoid committing binary screenshots so the repository stays source-only.
+
+## Single-file XLSX report
+
+Prefer Excel? Generate a single workbook that mirrors the HTML report and keeps every
+sheet filterable by passing `--report xlsx`:
+
+```bash
+ser-diff \
+  --before exports/Prod_BEFORE.xml \
+  --after exports/Prod_AFTER.xml \
+  --report xlsx \
+  --jira MOB-126703
+```
+
+The workbook contains `Summary`, `Added`, `Removed`, and `Changed` tabs with frozen header
+rows, auto-filters, partner callouts, and the same threshold diagnostics that appear in
+the console and canonical JSON.
+
+> Preview tip: open the generated workbook in Excel (or LibreOffice) and grab a screenshot
+> locally if needed. Binary assets are excluded from version control for lightweight
+> source tarballs.
+
 ## SOP Snippet (Standard Change)
 
 1. Export BEFORE (SER) from PolicyCenter.
@@ -113,7 +254,7 @@ ser-diff \
 
 ## Thresholds and Partners
 
-- `--max-added` / `--max-removed` enforce safety rails. Set `--fail-on-unexpected` to exit with status `2` if the gates are breached (reports are still written).
+- `--max-added` / `--max-removed` enforce safety rails. Violations always surface as console warnings and flip the exit code to `2` when `--fail-on-unexpected` is provided (reports are still written either way).
 - `--expected-partners` validates the `Partner` column. Unexpected partners are highlighted and can fail the run with `--fail-on-unexpected`.
 - `--strict` upgrades warnings (zero rows, schema mismatches) to exit status `2` so CI can block on unexpected inputs.
 
@@ -129,20 +270,82 @@ Sample SER and Exposure XML files live in `samples/`. Run `make demo` to generat
 
 ```bash
 make venv      # create a virtual environment with dev deps
-make fmt       # run black + ruff --fix
-make lint      # run ruff linting
-make test      # run pytest
+make fmt       # run black + ruff --fix across the repo
+make lint      # run ruff check and black --check
+make test      # run pytest -q
 make demo      # build sample reports
+```
+
+To auto-format before committing, install the pre-commit hooks:
+
+```bash
+pip install pre-commit
+pre-commit install
 ```
 
 CI runs linting, tests, and demo generation on Python 3.10 and 3.12. Reports are uploaded as artifacts for traceability.
 
+### CI example workflow
+
+The repository includes [`.github/workflows/release.yml`](.github/workflows/release.yml) as a
+reference pipeline. It runs linting/tests, generates demo HTML/XLSX/JSON artifacts, and
+publishes PyInstaller binaries on tags:
+
+```yaml
+name: Release
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  build-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e .[dev]
+      - run: make lint test
+      - name: Generate demo reports
+        run: |
+          ser-diff --before samples/SER_before.xml --after samples/SER_after.xml \
+            --table SER --report html --out-prefix reports/demo-ser
+          ser-diff --before samples/EXPOSURE_before.xml --after samples/EXPOSURE_after.xml \
+            --table EXPOSURE --report xlsx --out-prefix reports/demo-exposure
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ser-diff-reports
+          path: reports
+
+  release-binaries:
+    needs: build-artifacts
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyinstaller .
+      - run: pyinstaller --name ser-diff --onefile --console -p src -m serdiff.cli
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/ser-diff*
+```
+
 ## Changelog
 
-### Unreleased
-
-- Auto Mode now detects schemas, handles namespaces, and infers unique keys without crashing on duplicates.
-- CLI adds `--output-dir`, `--explain`, and `--strict`, printing a concise summary with friendlier zero-row diagnostics.
+See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 ## License
 
