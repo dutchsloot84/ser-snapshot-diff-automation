@@ -1,40 +1,74 @@
-# Installation and Single-File Binaries
+# Installation & Single-File Binaries
 
-`ser-diff` is published as a standard Python package. The recommended way to install it is with [`pipx`](https://pipx.pypa.io/):
+## pipx (recommended)
 
 ```bash
+python -m pip install --upgrade pip
 pipx install ser-diff
+ser-diff doctor
 ```
 
-When developing locally, you can also install from a checkout:
+## Virtual environments
+
+### macOS / Linux
 
 ```bash
-pipx install .
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .[dev]
+ser-diff doctor
 ```
 
-## Building Single-File Binaries
-
-For environments that do not have Python available, you can produce self-contained executables using [PyInstaller](https://pyinstaller.org/en/stable/). The commands below assume you are running them from the project root.
-
-### macOS and Linux
-
-```bash
-pipx run pyinstaller --name ser-diff --onefile --console -p src -m serdiff.cli
-mkdir -p dist
-mv dist/ser-diff dist/ser-diff-$(uname -s | tr '[:upper:]' '[:lower:]')
-```
-
-The resulting binary is placed in `dist/ser-diff-linux` on Linux and `dist/ser-diff-darwin` on macOS. Copy it to your desired distribution channel.
-
-### Windows (PowerShell)
+### Windows
 
 ```powershell
-pipx run pyinstaller --name ser-diff --onefile --console -p src -m serdiff.cli
-Rename-Item dist\ser-diff.exe dist\ser-diff-windows.exe
+# PowerShell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e .[dev]
+ser-diff doctor
 ```
 
-After building, run the executable with `ser-diff.exe doctor` to confirm it works on the target machine.
+```bash
+# Git Bash / MSYS
+python -m venv .venv
+source .venv/Scripts/activate
+pip install -e .[dev]
+ser-diff doctor
+```
 
-## Release Automation
+## Optional single-file binaries
 
-Tagged releases automatically build the three single-file binaries (Windows, macOS, Linux) and upload them as GitHub release assets. See `.github/workflows/ci.yml` for details.
+Environments without Python can rely on PyInstaller or uv to produce standalone executables.
+
+### PyInstaller
+
+```bash
+pip install --upgrade pip
+pip install pyinstaller
+pyinstaller --name ser-diff --onefile --console -p src -m serdiff.cli
+```
+
+Artifacts land in `dist/`. Rename per platform if desired (e.g., `ser-diff-linux`, `ser-diff-darwin`). Validate with `./dist/ser-diff --version`.
+
+### uv
+
+[`uv`](https://github.com/astral-sh/uv) can bundle the tool quickly when Python 3.12 is present:
+
+```bash
+uv tool install pyinstaller
+uv pip install .
+pyinstaller --name ser-diff --onefile --console -p src -m serdiff.cli
+```
+
+### Windows notes
+
+Run the same command set in PowerShell. The resulting `dist/ser-diff.exe` can be renamed to include the OS suffix. Verify with:
+
+```powershell
+./dist/ser-diff.exe doctor
+```
+
+## Release automation
+
+GitHub Actions builds and uploads macOS, Linux, and Windows one-file binaries whenever a tagged release is pushed. See [`.github/workflows/release.yml`](../.github/workflows/release.yml) for the reference implementation.

@@ -20,3 +20,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Safely escape embedded JSON in the HTML report to prevent premature `</script>` termination and retain Unicode line separators.
+
+### Docs
+- Refreshed README-first documentation with installation paths, quick-start guides, single-file report coverage, canonical JSON usage, guardrails, SOP, and troubleshooting guidance aligned to the current CLI.
+- Updated `docs/install.md` for pipx/venv workflows and binary build steps, and introduced `docs/reports.md` covering HTML/XLSX features and JSON extraction tips.

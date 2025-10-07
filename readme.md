@@ -1,1 +1,1 @@
-ser-snapshot-diff-automation.git
+Please see [README.md](README.md).
