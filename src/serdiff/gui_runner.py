@@ -7,8 +7,8 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox
 
-from .entrypoints import DiffRunResult, run_diff, run_doctor
-from .gui_utils import (
+from serdiff.entrypoints import DiffRunResult, run_diff, run_doctor
+from serdiff.gui_utils import (
     get_default_output_dir,
     get_last_directory,
     load_prefill_jira_ticket,

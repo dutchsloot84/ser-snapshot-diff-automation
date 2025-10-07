@@ -25,6 +25,7 @@ dev = [
 
 [project.scripts]
 ser-diff = "serdiff.cli:main"
+ser-diff-gui = "serdiff.gui_runner:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

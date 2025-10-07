@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .cli import (
+from serdiff.cli import (
     EXIT_GATES_FAILED,
     EXIT_SUCCESS,
     RunSetup,
@@ -19,8 +19,8 @@ from .cli import (
     _resolve_run_setup,
     _run_doctor,
 )
-from .config import load_config
-from .diff import diff_files, write_reports
+from serdiff.config import load_config
+from serdiff.diff import diff_files, write_reports
 
 
 @dataclass(slots=True)

@@ -9,35 +9,38 @@
 3. Select BEFORE and AFTER XML files, confirm the optional Jira ticket, and click **Run Diff**. The generated HTML/XLSX report opens automatically (with a folder fallback if the OS cannot launch the file directly).
 4. Use **Check Environment** to run `ser-diff doctor` if you encounter issues.
 
-### Build locally with PyInstaller
+### Build GUI locally with PyInstaller
 
-All commands assume Python 3.12 is available. The spec reads the desired binary name from `SERDIFF_GUI_NAME` to account for platform-specific naming.
+Prerequisites: Python 3.10+, `pip install -e .[dev] pyinstaller`, and platform SDKs (Xcode command line tools on macOS, Visual Studio Build Tools on Windows) when required by PyInstaller.
+
+Install build dependencies once:
 
 ```bash
 python -m pip install --upgrade pip
-python -m pip install .[dev] pyinstaller
+python -m pip install -e .[dev] pyinstaller
 ```
+
+Build commands (use the same sources we ship from CI):
 
 #### Windows (PowerShell)
 
 ```powershell
-$env:SERDIFF_GUI_NAME = "SER-Diff"
-pyinstaller --clean pyinstaller/ser-diff-gui.spec
+pyinstaller --onefile --windowed -n "SER-Diff" src/serdiff/gui_runner.py
 ```
 
 #### macOS (Terminal)
 
 ```bash
-SERDIFF_GUI_NAME="SER Diff" pyinstaller --clean pyinstaller/ser-diff-gui.spec
+pyinstaller --onefile --windowed -n "SER Diff.app" src/serdiff/gui_runner.py
 ```
 
 #### Linux (Terminal)
 
 ```bash
-SERDIFF_GUI_NAME="ser-diff-gui" pyinstaller --clean pyinstaller/ser-diff-gui.spec
+pyinstaller --onefile --windowed -n "ser-diff-gui" src/serdiff/gui_runner.py
 ```
 
-PyInstaller writes the binary to `dist/<name>/`. Package the executable (and the generated `README_RUN_ME.txt` from CI) into a zip when distributing manually.
+PyInstaller places the finished binaries under `dist/`. Zip each platform output for distribution (the GitHub Release workflow names the archives `SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, and `SER-Diff-Linux.zip`).
 
 ## pipx (recommended)
 
@@ -76,6 +79,23 @@ pip install -e .[dev]
 ser-diff doctor
 ```
 
-## Release automation
+## Publish Release (GUI binaries)
 
-GitHub Actions builds and uploads macOS, Linux, and Windows SER Diff GUI one-file binaries whenever a tagged release is pushed. See [`.github/workflows/release.yml`](../.github/workflows/release.yml) for the reference implementation.
+1. Update `pyproject.toml` with the new version and add a matching entry in `CHANGELOG.md`.
+2. Commit the changes and push your branch.
+3. Tag the release and push the tag:
+
+   ```bash
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
+   ```
+
+4. GitHub Actions builds and uploads the Windows, macOS, and Linux GUI zips (`SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, `SER-Diff-Linux.zip`) to the release.
+5. Validate the assets on the Releases page and update documentation links if the organization or repository name changes.
+
+### Troubleshooting
+
+- *ImportError: attempted relative import with no known parent package* → rebuild after ensuring all GUI imports use the `serdiff.` prefix (absolute imports).
+- *Windows SmartScreen warning* → select **More info → Run anyway** until code signing is available.
+
+Release automation details live in [`.github/workflows/release.yml`](../.github/workflows/release.yml).
