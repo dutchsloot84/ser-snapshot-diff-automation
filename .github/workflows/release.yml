@@ -1,0 +1,109 @@
+name: Release
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  build-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -e .[dev]
+
+      - name: Lint and test
+        run: make lint test
+
+      - name: Generate demo reports
+        run: |
+          mkdir -p reports
+          ser-diff --before samples/SER_before.xml --after samples/SER_after.xml \
+            --table SER --report html --out-prefix reports/demo-ser
+          ser-diff --before samples/EXPOSURE_before.xml --after samples/EXPOSURE_after.xml \
+            --table EXPOSURE --report xlsx --out-prefix reports/demo-exposure
+
+      - name: Upload reports artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ser-diff-demo-artifacts
+          path: reports
+          if-no-files-found: error
+
+  release-binaries:
+    name: Build single-file binaries
+    needs: build-artifacts
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset: ser-diff-linux
+            extension: ""
+          - os: macos-latest
+            asset: ser-diff-macos
+            extension: ""
+          - os: windows-latest
+            asset: ser-diff-windows.exe
+            extension: ".exe"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller .
+
+      - name: Build binary
+        run: pyinstaller --name ser-diff --onefile --console -p src -m serdiff.cli
+
+      - name: Prepare asset
+        env:
+          TARGET_NAME: ${{ matrix.asset }}
+          SOURCE_EXT: ${{ matrix.extension }}
+        run: |
+          python - <<'PY'
+          import os
+          import pathlib
+          import shutil
+
+          dist = pathlib.Path("dist")
+          dist.mkdir(exist_ok=True)
+          source = dist / f"ser-diff{os.environ['SOURCE_EXT']}"
+          target = dist / os.environ["TARGET_NAME"]
+          if not source.exists():
+              raise SystemExit(f"expected binary at {source} before renaming")
+          if target.exists():
+              target.unlink()
+          shutil.move(source, target)
+          PY
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ matrix.asset }}

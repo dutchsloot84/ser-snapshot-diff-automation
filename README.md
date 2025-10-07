@@ -5,7 +5,7 @@
 ## Features
 
 - Streaming XML reader powered by `xml.etree.ElementTree.iterparse` for large files.
-- Auto Mode detects schemas/namespaces and infers unique keys with optional `--explain` output.
+- Auto Mode detects schemas/namespaces and infers unique keys; inspect results with `ser-diff explain` or the `--explain` flag.
 - Presets for SER and Exposure Types tables plus a fully custom mode.
 - Field-level diffing with auditable JSON + CSV outputs.
 - Threshold and partner guard rails for change management.
@@ -66,7 +66,26 @@ Auto Mode is enabled automatically whenever you omit `--table`/`--record-path`. 
 - Detects PolicyCenter schemas (SER vs Exposure Types) by probing element local names.
 - Handles default or prefixed namespaces without additional flags; `--strip-ns` is available for tricky files.
 - Infers a stable key: `PublicID` when unique, otherwise a composite that is extended with additional fields (and, if required, a row counter) to avoid duplicate-key crashes.
-- Prints a one-line summary plus friendly zero-row diagnostics; `--explain` reveals the detected schema, fields, key candidates, and namespace status.
+- Emits a compact summary line with counts and guardrail warnings. Run `ser-diff explain` (or add `--explain`) to reveal the detected schema, fields, key candidates, namespace status, and even machine-readable diagnostics via `--json`.
+
+### Explain the detected schema
+
+Use the dedicated subcommand when you want to inspect detection heuristics without writing
+reports:
+
+```bash
+ser-diff explain \
+  --before exports/Prod_BEFORE.xml \
+  --after  exports/Prod_AFTER.xml \
+  --auto
+```
+
+Add `--json` to emit a machine-readable payload that mirrors the Diagnostics section in the
+HTML report:
+
+```bash
+ser-diff explain --before BEFORE.xml --after AFTER.xml --auto --json
+```
 
 ### PolicyCenter SER (explicit preset)
 
@@ -191,7 +210,9 @@ ser-diff \
 
 The HTML file (`<output-dir>/<out-prefix>/<out-prefix>.html`) contains sticky table headers,
 column sorting, quick filters, partner callouts, and embeds the canonical JSON payload for
-programmatic reuse.
+programmatic reuse. JSON is embedded safely in a `<script type="application/json">` tag with
+`</` and the U+2028/U+2029 line separators escaped so browsers cannot terminate the script
+early.
 
 > Preview tip: open the generated HTML file in your browser and capture a screenshot locally.
 > We avoid committing binary screenshots so the repository stays source-only.
@@ -233,7 +254,7 @@ the console and canonical JSON.
 
 ## Thresholds and Partners
 
-- `--max-added` / `--max-removed` enforce safety rails. Set `--fail-on-unexpected` to exit with status `2` if the gates are breached (reports are still written).
+- `--max-added` / `--max-removed` enforce safety rails. Violations always surface as console warnings and flip the exit code to `2` when `--fail-on-unexpected` is provided (reports are still written either way).
 - `--expected-partners` validates the `Partner` column. Unexpected partners are highlighted and can fail the run with `--fail-on-unexpected`.
 - `--strict` upgrades warnings (zero rows, schema mismatches) to exit status `2` so CI can block on unexpected inputs.
 
@@ -263,6 +284,64 @@ pre-commit install
 ```
 
 CI runs linting, tests, and demo generation on Python 3.10 and 3.12. Reports are uploaded as artifacts for traceability.
+
+### CI example workflow
+
+The repository includes [`.github/workflows/release.yml`](.github/workflows/release.yml) as a
+reference pipeline. It runs linting/tests, generates demo HTML/XLSX/JSON artifacts, and
+publishes PyInstaller binaries on tags:
+
+```yaml
+name: Release
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  build-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e .[dev]
+      - run: make lint test
+      - name: Generate demo reports
+        run: |
+          ser-diff --before samples/SER_before.xml --after samples/SER_after.xml \
+            --table SER --report html --out-prefix reports/demo-ser
+          ser-diff --before samples/EXPOSURE_before.xml --after samples/EXPOSURE_after.xml \
+            --table EXPOSURE --report xlsx --out-prefix reports/demo-exposure
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ser-diff-reports
+          path: reports
+
+  release-binaries:
+    needs: build-artifacts
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyinstaller .
+      - run: pyinstaller --name ser-diff --onefile --console -p src -m serdiff.cli
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/ser-diff*
+```
 
 ## Changelog
 

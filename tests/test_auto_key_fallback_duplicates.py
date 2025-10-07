@@ -61,7 +61,7 @@ def test_auto_mode_extends_key_for_duplicates(tmp_path: Path, capsys) -> None:
 
     captured = capsys.readouterr()
     assert exit_code == cli.EXIT_SUCCESS
-    assert "Diff: added=0" in captured.out
+    assert "Diff summary | added: 0" in captured.out
 
     report_dir = tmp_path / "auto-dup"
     report = report_dir / "diff.json"

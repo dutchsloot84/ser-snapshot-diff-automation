@@ -14,3 +14,9 @@ All notable changes to this project will be documented in this file.
 - Canonical `diff.json` (schema v1.0) emitted for every run including threshold metadata for CI automation.
 - Single-file HTML reporting via `--report html` with inline assets and an embedded canonical JSON payload.
 - Single-file XLSX reporting via `--report xlsx` that mirrors the HTML report with Summary/Added/Removed/Changed worksheets.
+- `ser-diff explain` subcommand (with `--json`) for reusable diagnostics plus richer console summaries during `ser-diff` runs.
+- Guardrail handling now exits with status `2` when `--fail-on-unexpected` or `--strict` flags are set while still producing all report artifacts.
+- Example CI release workflow (`.github/workflows/release.yml`) and README guidance covering artifact uploads and tagged binary builds.
+
+### Fixed
+- Safely escape embedded JSON in the HTML report to prevent premature `</script>` termination and retain Unicode line separators.

@@ -10,6 +10,15 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from .diff import DiffResult
 
 
+def safe_json_for_script(payload: dict[str, object]) -> str:
+    """Serialise JSON for embedding inside a ``<script type="application/json">`` tag."""
+
+    serialised = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    serialised = serialised.replace("</", "<\\/")
+    serialised = serialised.replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
+    return serialised
+
+
 def _escape(value: object) -> str:
     if value is None:
         return ""
@@ -235,6 +244,8 @@ def render_html_report(
         '<html lang="en">',
         "<head>",
         '  <meta charset="utf-8">',
+        '  <meta http-equiv="Content-Security-Policy" '
+        "content=\"default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'\">",
         f"  <title>{_escape(title)}</title>",
         "  <style>",
         "    :root { color-scheme: light dark; font-family: 'Inter', 'Segoe UI', sans-serif; }",
@@ -372,9 +383,17 @@ def render_html_report(
     html_parts.extend(
         [
             "  </div>",
-            f'  <script type="application/json" id="ser-diff-data">{json.dumps(payload, indent=2)}</script>',
+            f'  <script type="application/json" id="ser-diff-data">{safe_json_for_script(payload)}</script>',
             "  <script>",
             "    (function() {",
+            "      const dataEl = document.getElementById('ser-diff-data');",
+            "      if (dataEl) {",
+            "        try {",
+            "          window.serDiffPayload = JSON.parse(dataEl.textContent);",
+            "        } catch (error) {",
+            "          console.error('Failed to parse embedded payload', error);",
+            "        }",
+            "      }",
             "      const filters = document.querySelectorAll('[data-table-filter]');",
             "      filters.forEach((input) => {",
             "        input.addEventListener('input', () => {",

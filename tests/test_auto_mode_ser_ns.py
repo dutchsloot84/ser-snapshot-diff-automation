@@ -28,7 +28,7 @@ def test_auto_mode_handles_namespaced_ser(tmp_path: Path, capsys) -> None:
 
     captured = capsys.readouterr()
     assert exit_code == cli.EXIT_SUCCESS
-    assert "Diff: added=1" in captured.out
+    assert "Diff summary | added: 1" in captured.out
 
     report_dir = tmp_path / "auto-ser"
     report = report_dir / "diff.json"
