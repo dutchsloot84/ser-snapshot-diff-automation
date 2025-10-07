@@ -27,9 +27,11 @@ All notable changes to this project will be documented in this file.
 - Safely escape embedded JSON in the HTML report to prevent premature `</script>` termination and retain Unicode line separators.
 - GUI now opens the generated primary report (or its folder) reliably and `DiffRunResult` exposes concrete report paths for automation consumers.
 - GUI imports now use absolute `serdiff.` paths so PyInstaller one-file builds run without package-context errors.
+- Release workflow now calls PyInstaller with `src/serdiff/gui_runner.py`, adds a script preflight check, and lets macOS, Windows, and Linux builds finish independently with `fail-fast: false`.
 
 ### Docs
 - README quick-start for the GUI runner and refreshed installation notes covering download/build steps for one-file binaries.
 - Refreshed README-first documentation with installation paths, quick-start guides, single-file report coverage, canonical JSON usage, guardrails, SOP, and troubleshooting guidance aligned to the current CLI.
 - Updated `docs/install.md` for pipx/venv workflows and binary build steps, and introduced `docs/reports.md` covering HTML/XLSX features and JSON extraction tips.
 - Added README and `docs/install.md` sections describing local GUI builds and the release tagging workflow for binary distribution.
+- Documented the stable GUI script path, Gatekeeper guidance, and CI build safeguards (preflight + independent matrix) for the PyInstaller workflow.
