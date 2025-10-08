@@ -60,8 +60,9 @@ jobs:
           set -e
           test -f "src/serdiff/gui_runner.py" || { echo "::error::Missing src/serdiff/gui_runner.py"; exit 1; }
           test -f "src/serdiff/cli.py" || { echo "::error::Missing src/serdiff/cli.py"; exit 1; }
-          if git grep -n "pyinstaller/src/serdiff/gui_runner.py" -- . ; then
-            echo "::error::Stale path 'pyinstaller/src/serdiff/gui_runner.py' found above. Fix references."
+          stale_path='pyinstaller/src/serdiff/'"gui_runner.py"
+          if git grep -n "$stale_path" -- . ; then
+            echo "::error::Stale path '$stale_path' found above. Fix references."
             exit 1
           fi
           echo "Entrypoint scripts OK."
