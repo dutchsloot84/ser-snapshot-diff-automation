@@ -1,4 +1,4 @@
-name: Release
+name: Release GUI & CLI Binaries
 
 on:
   push:
@@ -54,7 +54,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .[dev] pyinstaller
 
-      - name: Preflight: verify entrypoint scripts & guard stale refs
+      - name: "Preflight: verify entrypoint scripts & guard stale refs"
         shell: bash
         run: |
           set -e
@@ -71,7 +71,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          rm -rf build dist
+          rm -rf build dist upload
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             pyinstaller --onefile --windowed -n "SER-Diff" src/serdiff/gui_runner.py
             pyinstaller --onefile --console -n "ser-diff" src/serdiff/cli.py
@@ -79,7 +79,7 @@ jobs:
             mkdir -p upload/win
             cp dist/SER-Diff.exe upload/win/
             cp dist/ser-diff.exe upload/win/
-            printf "GUI: SER-Diff.exe\nCLI: ser-diff.exe\n" > upload/win/README_RUN_ME.txt
+            printf "Double-click SER-Diff.exe (GUI). Put XMLs in exports/. Reports appear in reports/.\nCLI: ser-diff.exe (advanced).\n" > upload/win/README_RUN_ME.txt
             powershell -command "Compress-Archive -Path upload\\win\\* -DestinationPath SER-Diff-Windows.zip"
             echo "archive=SER-Diff-Windows.zip" >> "$GITHUB_OUTPUT"
 
@@ -90,7 +90,7 @@ jobs:
             mkdir -p upload/mac
             cp -R "dist/SER-Diff.app" upload/mac/
             cp "dist/ser-diff" upload/mac/
-            printf "GUI: SER-Diff.app (Gatekeeper may prompt)\nCLI: ./ser-diff\n" > upload/mac/README_RUN_ME.txt
+            printf "Double-click SER-Diff.app (GUI). Put XMLs in exports/. Reports appear in reports/.\nCLI: ./ser-diff (advanced).\n" > upload/mac/README_RUN_ME.txt
             (cd upload/mac && zip -r ../../SER-Diff-macOS.zip .)
             echo "archive=SER-Diff-macOS.zip" >> "$GITHUB_OUTPUT"
 
@@ -101,90 +101,113 @@ jobs:
             mkdir -p upload/linux
             cp dist/ser-diff-gui upload/linux/
             cp dist/ser-diff upload/linux/
-            printf "GUI: ./ser-diff-gui\nCLI: ./ser-diff\n" > upload/linux/README_RUN_ME.txt
+            printf "Double-click (or run ./ser-diff-gui) for the GUI. Put XMLs in exports/. Reports appear in reports/.\nCLI: ./ser-diff (advanced).\n" > upload/linux/README_RUN_ME.txt
             (cd upload/linux && zip -r ../../SER-Diff-Linux.zip .)
             echo "archive=SER-Diff-Linux.zip" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Verify Windows archive contents
+      - name: Verify packaged archive contents
+        shell: bash
+        env:
+          ARCHIVE: ${{ steps.package.outputs.archive }}
+        run: |
+          python - <<'PY'
+          import os
+          import sys
+          import zipfile
+
+          archive = os.environ["ARCHIVE"]
+          runner_os = os.environ.get("RUNNER_OS")
+
+          if not archive:
+              raise SystemExit("Archive path is empty")
+
+          expected = {
+              "Windows": {"SER-Diff.exe", "ser-diff.exe", "README_RUN_ME.txt"},
+              "macOS": {"SER-Diff.app", "ser-diff", "README_RUN_ME.txt"},
+              "Linux": {"ser-diff-gui", "ser-diff", "README_RUN_ME.txt"},
+          }.get(runner_os)
+
+          if expected is None:
+              raise SystemExit(f"Unexpected RUNNER_OS={runner_os!r}")
+
+          def normalize(name: str) -> str:
+              if name.endswith("/"):
+                  name = name[:-1]
+              if name.startswith("./"):
+                  name = name[2:]
+              return name
+
+          with zipfile.ZipFile(archive) as zf:
+              entries = {normalize(name).split("/", 1)[0] for name in zf.namelist()}
+
+          missing = sorted(expected - entries)
+          if missing:
+              raise SystemExit(
+                  f"Archive {archive} on {runner_os} missing expected entries: {', '.join(missing)}"
+              )
+
+          print(f"Verified {archive}: contains {sorted(entries)}")
+          PY
+
+      - name: Smoke test GUI binary (Windows)
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          set -euo pipefail
           python - <<'PY'
-import zipfile
+          import pathlib
+          import subprocess
+          import time
 
-zip_path = "SER-Diff-Windows.zip"
-expected = {"SER-Diff.exe", "ser-diff.exe", "README_RUN_ME.txt"}
+          exe = pathlib.Path("dist") / "SER-Diff.exe"
+          if not exe.exists():
+              raise SystemExit(f"Missing GUI binary at {exe}")
 
-with zipfile.ZipFile(zip_path) as zf:
-    top_level = set()
-    for info in zf.infolist():
-        name = info.filename.rstrip("/")
-        if not name:
-            continue
-        top_level.add(name.split("/", 1)[0])
+          proc = subprocess.Popen([str(exe)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+          time.sleep(2)
+          if proc.poll() is None:
+              proc.terminate()
+              try:
+                  proc.wait(timeout=5)
+              except subprocess.TimeoutExpired:
+                  proc.kill()
+                  proc.wait(timeout=5)
 
-missing = sorted(expected - top_level)
-if missing:
-    raise SystemExit(f"Missing from {zip_path}: {', '.join(missing)}")
+          stdout, stderr = proc.communicate()
+          combined = (stdout + stderr).decode("utf-8", errors="ignore")
+          needle = "ser-diff: error: the following arguments are required"
+          if needle in combined:
+              raise SystemExit("GUI binary printed CLI usage output; expected quiet launch")
+          PY
 
-print(f"{zip_path} contains required entries: {', '.join(sorted(expected))}")
-PY
-
-      - name: Verify macOS archive contents
-        if: runner.os == 'macOS'
+      - name: Smoke test CLI usage
         shell: bash
         run: |
-          set -euo pipefail
           python - <<'PY'
-import zipfile
+          import os
+          import pathlib
+          import subprocess
 
-zip_path = "SER-Diff-macOS.zip"
-expected = {"SER-Diff.app", "ser-diff", "README_RUN_ME.txt"}
+          if os.environ.get("RUNNER_OS") == "Windows":
+              exe = pathlib.Path("dist") / "ser-diff.exe"
+          else:
+              exe = pathlib.Path("dist") / "ser-diff"
 
-with zipfile.ZipFile(zip_path) as zf:
-    top_level = set()
-    for info in zf.infolist():
-        name = info.filename.rstrip("/")
-        if not name:
-            continue
-        top_level.add(name.split("/", 1)[0])
+          if not exe.exists():
+              raise SystemExit(f"Missing CLI binary at {exe}")
 
-missing = sorted(expected - top_level)
-if missing:
-    raise SystemExit(f"Missing from {zip_path}: {', '.join(missing)}")
-
-print(f"{zip_path} contains required entries: {', '.join(sorted(expected))}")
-PY
-
-      - name: Verify Linux archive contents
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-import zipfile
-
-zip_path = "SER-Diff-Linux.zip"
-expected = {"ser-diff-gui", "ser-diff", "README_RUN_ME.txt"}
-
-with zipfile.ZipFile(zip_path) as zf:
-    top_level = set()
-    for info in zf.infolist():
-        name = info.filename.rstrip("/")
-        if not name:
-            continue
-        top_level.add(name.split("/", 1)[0])
-
-missing = sorted(expected - top_level)
-if missing:
-    raise SystemExit(f"Missing from {zip_path}: {', '.join(missing)}")
-
-print(f"{zip_path} contains required entries: {', '.join(sorted(expected))}")
-PY
+          result = subprocess.run([str(exe)], capture_output=True, text=True)
+          combined = (result.stdout or "") + (result.stderr or "")
+          needle = "ser-diff: error: the following arguments are required"
+          if result.returncode == 0:
+              raise SystemExit("CLI should emit usage error when no arguments are provided")
+          if needle not in combined:
+              raise SystemExit("CLI usage output missing expected argparse message")
+          PY
 
       - name: Upload assets to Release
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.package.outputs.archive }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

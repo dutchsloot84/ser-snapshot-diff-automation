@@ -11,10 +11,10 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import __version__
-from .detect import ROW_INDEX_FIELD
-from .report_html import render_html_report
-from .report_xlsx import write_xlsx_report
+from serdiff import __version__
+from serdiff.detect import ROW_INDEX_FIELD
+from serdiff.report_html import render_html_report
+from serdiff.report_xlsx import write_xlsx_report
 
 
 def _local_name(tag: str | None) -> str:
