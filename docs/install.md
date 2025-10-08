@@ -54,7 +54,7 @@ pyinstaller --onefile --console -n "ser-diff" src/serdiff/cli.py
 
 On Windows the output is `dist/ser-diff.exe`; on macOS/Linux it is `dist/ser-diff`. Package it alongside the GUI binary for releases.
 
-The Release workflow now fails early if it detects missing entrypoint scripts or the stale `pyinstaller/src/serdiff/gui_runner.py` path anywhere in the repository, ensuring both binaries continue to build from `src/serdiff/gui_runner.py` and `src/serdiff/cli.py`.
+The Release workflow now fails early if it detects missing entrypoint scripts or references to the old PyInstaller-specific GUI runner location, ensuring both binaries continue to build from `src/serdiff/gui_runner.py` and `src/serdiff/cli.py`.
 
 ## pipx (recommended)
 
@@ -104,7 +104,7 @@ ser-diff doctor
    git push origin vX.Y.Z
    ```
 
-4. GitHub Actions builds and uploads the Windows, macOS, and Linux zips—each bundle now contains both GUI (`SER-Diff.exe`/`.app`/`ser-diff-gui`) and CLI (`ser-diff(.exe)`) binaries alongside a README (`SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, `SER-Diff-Linux.zip`). Each matrix job sets `fail-fast: false`, so other platforms continue even if one build fails. The preflight guard blocks the run if the entrypoint scripts are missing or the deprecated `pyinstaller/src/serdiff/gui_runner.py` reference resurfaces, ensuring the matrix keeps building against `src/serdiff/gui_runner.py` and `src/serdiff/cli.py`.
+4. GitHub Actions builds and uploads the Windows, macOS, and Linux zips—each bundle now contains both GUI (`SER-Diff.exe`/`.app`/`ser-diff-gui`) and CLI (`ser-diff(.exe)`) binaries alongside a README (`SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, `SER-Diff-Linux.zip`). Each matrix job sets `fail-fast: false`, so other platforms continue even if one build fails. The preflight guard blocks the run if the entrypoint scripts are missing or if any files reintroduce the deprecated PyInstaller path for the GUI runner, ensuring the matrix keeps building against `src/serdiff/gui_runner.py` and `src/serdiff/cli.py`.
 5. Validate the assets on the Releases page and update documentation links if the organization or repository name changes.
 
 ### Troubleshooting

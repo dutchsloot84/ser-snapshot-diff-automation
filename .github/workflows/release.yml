@@ -1,4 +1,4 @@
-name: Release
+name: Release GUI & CLI Binaries
 
 on:
   push:
@@ -54,14 +54,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .[dev] pyinstaller
 
-      - name: Preflight: verify entrypoint scripts & guard stale refs
+      - name: "Preflight: verify entrypoint scripts & guard stale refs"
         shell: bash
         run: |
           set -e
           test -f "src/serdiff/gui_runner.py" || { echo "::error::Missing src/serdiff/gui_runner.py"; exit 1; }
           test -f "src/serdiff/cli.py" || { echo "::error::Missing src/serdiff/cli.py"; exit 1; }
-          if git grep -n "pyinstaller/src/serdiff/gui_runner.py" -- . ; then
-            echo "::error::Stale path 'pyinstaller/src/serdiff/gui_runner.py' found above. Fix references."
+          stale_path='pyinstaller/src/serdiff/'"gui_runner.py"
+          if git grep -n "$stale_path" -- . ; then
+            echo "::error::Stale path '$stale_path' found above. Fix references."
             exit 1
           fi
           echo "Entrypoint scripts OK."
@@ -71,7 +72,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          rm -rf build dist
+          rm -rf build dist upload
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             pyinstaller --onefile --windowed -n "SER-Diff" src/serdiff/gui_runner.py
             pyinstaller --onefile --console -n "ser-diff" src/serdiff/cli.py
@@ -79,7 +80,7 @@ jobs:
             mkdir -p upload/win
             cp dist/SER-Diff.exe upload/win/
             cp dist/ser-diff.exe upload/win/
-            printf "GUI: SER-Diff.exe\nCLI: ser-diff.exe\n" > upload/win/README_RUN_ME.txt
+            printf "Double-click SER-Diff.exe (GUI). Put XMLs in exports/. Reports appear in reports/.\nCLI: ser-diff.exe (advanced).\n" > upload/win/README_RUN_ME.txt
             powershell -command "Compress-Archive -Path upload\\win\\* -DestinationPath SER-Diff-Windows.zip"
             echo "archive=SER-Diff-Windows.zip" >> "$GITHUB_OUTPUT"
 
@@ -90,7 +91,7 @@ jobs:
             mkdir -p upload/mac
             cp -R "dist/SER-Diff.app" upload/mac/
             cp "dist/ser-diff" upload/mac/
-            printf "GUI: SER-Diff.app (Gatekeeper may prompt)\nCLI: ./ser-diff\n" > upload/mac/README_RUN_ME.txt
+            printf "Double-click SER-Diff.app (GUI). Put XMLs in exports/. Reports appear in reports/.\nCLI: ./ser-diff (advanced).\n" > upload/mac/README_RUN_ME.txt
             (cd upload/mac && zip -r ../../SER-Diff-macOS.zip .)
             echo "archive=SER-Diff-macOS.zip" >> "$GITHUB_OUTPUT"
 
@@ -101,12 +102,113 @@ jobs:
             mkdir -p upload/linux
             cp dist/ser-diff-gui upload/linux/
             cp dist/ser-diff upload/linux/
-            printf "GUI: ./ser-diff-gui\nCLI: ./ser-diff\n" > upload/linux/README_RUN_ME.txt
+            printf "Double-click (or run ./ser-diff-gui) for the GUI. Put XMLs in exports/. Reports appear in reports/.\nCLI: ./ser-diff (advanced).\n" > upload/linux/README_RUN_ME.txt
             (cd upload/linux && zip -r ../../SER-Diff-Linux.zip .)
             echo "archive=SER-Diff-Linux.zip" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Verify packaged archive contents
+        shell: bash
+        env:
+          ARCHIVE: ${{ steps.package.outputs.archive }}
+        run: |
+          python - <<'PY'
+          import os
+          import sys
+          import zipfile
+
+          archive = os.environ["ARCHIVE"]
+          runner_os = os.environ.get("RUNNER_OS")
+
+          if not archive:
+              raise SystemExit("Archive path is empty")
+
+          expected = {
+              "Windows": {"SER-Diff.exe", "ser-diff.exe", "README_RUN_ME.txt"},
+              "macOS": {"SER-Diff.app", "ser-diff", "README_RUN_ME.txt"},
+              "Linux": {"ser-diff-gui", "ser-diff", "README_RUN_ME.txt"},
+          }.get(runner_os)
+
+          if expected is None:
+              raise SystemExit(f"Unexpected RUNNER_OS={runner_os!r}")
+
+          def normalize(name: str) -> str:
+              if name.endswith("/"):
+                  name = name[:-1]
+              if name.startswith("./"):
+                  name = name[2:]
+              return name
+
+          with zipfile.ZipFile(archive) as zf:
+              entries = {normalize(name).split("/", 1)[0] for name in zf.namelist()}
+
+          missing = sorted(expected - entries)
+          if missing:
+              raise SystemExit(
+                  f"Archive {archive} on {runner_os} missing expected entries: {', '.join(missing)}"
+              )
+
+          print(f"Verified {archive}: contains {sorted(entries)}")
+          PY
+
+      - name: Smoke test GUI binary (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import pathlib
+          import subprocess
+          import time
+
+          exe = pathlib.Path("dist") / "SER-Diff.exe"
+          if not exe.exists():
+              raise SystemExit(f"Missing GUI binary at {exe}")
+
+          proc = subprocess.Popen([str(exe)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+          time.sleep(2)
+          if proc.poll() is None:
+              proc.terminate()
+              try:
+                  proc.wait(timeout=5)
+              except subprocess.TimeoutExpired:
+                  proc.kill()
+                  proc.wait(timeout=5)
+
+          stdout, stderr = proc.communicate()
+          combined = (stdout + stderr).decode("utf-8", errors="ignore")
+          needle = "ser-diff: error: the following arguments are required"
+          if needle in combined:
+              raise SystemExit("GUI binary printed CLI usage output; expected quiet launch")
+          PY
+
+      - name: Smoke test CLI usage
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          import pathlib
+          import subprocess
+
+          if os.environ.get("RUNNER_OS") == "Windows":
+              exe = pathlib.Path("dist") / "ser-diff.exe"
+          else:
+              exe = pathlib.Path("dist") / "ser-diff"
+
+          if not exe.exists():
+              raise SystemExit(f"Missing CLI binary at {exe}")
+
+          result = subprocess.run([str(exe)], capture_output=True, text=True)
+          combined = (result.stdout or "") + (result.stderr or "")
+          needle = "ser-diff: error: the following arguments are required"
+          if result.returncode == 0:
+              raise SystemExit("CLI should emit usage error when no arguments are provided")
+          if needle not in combined:
+              raise SystemExit("CLI usage output missing expected argparse message")
+          PY
 
       - name: Upload assets to Release
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.package.outputs.archive }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

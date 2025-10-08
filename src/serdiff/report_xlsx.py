@@ -10,7 +10,7 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 
 if TYPE_CHECKING:  # pragma: no cover - import for typing only
-    from .diff import DiffResult
+    from serdiff.diff import DiffResult
 
 
 def _append_rows(ws, rows: Iterable[tuple[Any, ...]]) -> None:

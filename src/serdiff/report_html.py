@@ -7,7 +7,7 @@ import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from .diff import DiffResult
+    from serdiff.diff import DiffResult
 
 
 def safe_json_for_script(payload: dict[str, object]) -> str:

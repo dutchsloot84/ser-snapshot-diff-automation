@@ -28,6 +28,7 @@ All notable changes to this project will be documented in this file.
 - GUI now opens the generated primary report (or its folder) reliably and `DiffRunResult` exposes concrete report paths for automation consumers.
 - GUI imports now use absolute `serdiff.` paths so PyInstaller one-file builds run without package-context errors.
 - ci(release): fix PyInstaller commands to use GUI/CLI script entrypoints, add preflight guards, and keep the matrix resilient.
+- ci(release): add GUI smoke check; include README in ZIP.
 
 ### Docs
 - README quick-start for the GUI runner and refreshed installation notes covering download/build steps for one-file binaries.
@@ -35,3 +36,4 @@ All notable changes to this project will be documented in this file.
 - Updated `docs/install.md` for pipx/venv workflows and binary build steps, and introduced `docs/reports.md` covering HTML/XLSX features and JSON extraction tips.
 - Added README and `docs/install.md` sections describing local GUI builds and the release tagging workflow for binary distribution.
 - Documented the stable GUI script path, Gatekeeper guidance, and CI build safeguards (preflight + independent matrix) for the PyInstaller workflow.
+- docs(release): package GUI+CLI per OS; default instructions target GUI.
