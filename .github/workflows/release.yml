@@ -54,7 +54,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .[dev] pyinstaller
 
-      - name: Preflight: verify entrypoint scripts & guard stale refs
+      - name: "Preflight: verify entrypoint scripts & guard stale refs"
         shell: bash
         run: |
           set -e
@@ -105,6 +105,50 @@ jobs:
             (cd upload/linux && zip -r ../../SER-Diff-Linux.zip .)
             echo "archive=SER-Diff-Linux.zip" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Verify packaged archive contents
+        shell: bash
+        env:
+          ARCHIVE: ${{ steps.package.outputs.archive }}
+        run: |
+          python - <<'PY'
+          import os
+          import sys
+          import zipfile
+
+          archive = os.environ["ARCHIVE"]
+          runner_os = os.environ.get("RUNNER_OS")
+
+          if not archive:
+              raise SystemExit("Archive path is empty")
+
+          expected = {
+              "Windows": {"SER-Diff.exe", "ser-diff.exe", "README_RUN_ME.txt"},
+              "macOS": {"SER-Diff.app", "ser-diff", "README_RUN_ME.txt"},
+              "Linux": {"ser-diff-gui", "ser-diff", "README_RUN_ME.txt"},
+          }.get(runner_os)
+
+          if expected is None:
+              raise SystemExit(f"Unexpected RUNNER_OS={runner_os!r}")
+
+          def normalize(name: str) -> str:
+              if name.endswith("/"):
+                  name = name[:-1]
+              if name.startswith("./"):
+                  name = name[2:]
+              return name
+
+          with zipfile.ZipFile(archive) as zf:
+              entries = {normalize(name).split("/", 1)[0] for name in zf.namelist()}
+
+          missing = sorted(expected - entries)
+          if missing:
+              raise SystemExit(
+                  f"Archive {archive} on {runner_os} missing expected entries: {', '.join(missing)}"
+              )
+
+          print(f"Verified {archive}: contains {sorted(entries)}")
+          PY
 
       - name: Smoke test GUI binary (Windows)
         if: runner.os == 'Windows'
