@@ -22,10 +22,10 @@
 
 ## GUI Runner
 
-1. Download the latest "SER Diff" GUI zip for your platform from [GitHub Releases](https://github.com/ser-projects/ser-snapshot-diff-automation/releases).
-2. Extract the archive and double-click the bundled binary (`SER-Diff.exe`, `SER-Diff.app`, or `ser-diff-gui`). Each zip also ships the CLI companion (`ser-diff.exe` or `ser-diff`) plus a quick README.
-3. Choose BEFORE and AFTER XML exports. The Jira ID field is automatically pre-filled if `.serdiff.toml/.yaml/.json` is present in the working directory.
-4. Click **Run Diff**. A timestamped folder beneath `~/SER-Diff-Reports/` is created, the primary report opens directly in your file explorer (with a folder fallback when required), and any guardrail warnings are highlighted in the GUI.
+1. Download the platform ZIP (Windows/macOS/Linux) from [GitHub Releases](https://github.com/ser-projects/ser-snapshot-diff-automation/releases).
+2. Extract the archive and double-click **SER-Diff** (`SER-Diff.exe` on Windows, `SER-Diff.app` on macOS, or run `./ser-diff-gui` on Linux). Each bundle also includes the CLI companion (`ser-diff.exe` or `ser-diff`) plus a README with quick-start details.
+3. Place your BEFORE and AFTER XML exports inside the `exports/` folder next to the binaries. Reports are written to `reports/`.
+4. In the app, pick BEFORE/AFTER exports, tweak options as needed, and click **Run Diff**. A timestamped folder beneath `~/SER-Diff-Reports/` is created, the primary report opens directly in your file explorer (with a folder fallback when required), and any guardrail warnings are highlighted in the GUI.
 5. Click **Check Environment** any time to run `ser-diff doctor` and confirm local prerequisites.
 
 > **macOS Gatekeeper:** On the first launch, right-click `SER-Diff.app`, choose **Open**, and acknowledge the unidentified developer prompt.
@@ -37,6 +37,8 @@
 - One-file binaries built with PyInstaller (`SER-Diff.exe`, `SER-Diff.app`, `ser-diff-gui`).
 
 For build instructions and advanced packaging notes, see [docs/install.md](docs/install.md).
+
+> **Troubleshooting:** If you see a console window with argparse usage text, you launched the CLI (`ser-diff.exe`/`ser-diff`). Close it and double-click `SER-Diff.exe`/`SER-Diff.app` (or run `./ser-diff-gui`) for the GUI.
 
 ## Installation
 
