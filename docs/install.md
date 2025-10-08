@@ -42,7 +42,7 @@ pyinstaller --onefile --windowed -n "SER-Diff" src/serdiff/gui_runner.py
 pyinstaller --onefile --windowed -n "ser-diff-gui" src/serdiff/gui_runner.py
 ```
 
-PyInstaller places the finished binaries under `dist/`. Zip each platform output for distribution (the GitHub Release workflow names the archives `SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, and `SER-Diff-Linux.zip`). The CI job invokes PyInstaller directly with `src/serdiff/gui_runner.py`, so keep that path stable—if the script moves, update the workflow and rerun the preflight check locally before tagging.
+PyInstaller places the finished binaries under `dist/`. Zip each platform output for distribution (the GitHub Release workflow names the archives `SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, and `SER-Diff-Linux.zip`). CI builds call PyInstaller directly with `src/serdiff/gui_runner.py`, so keep that path stable—if the script moves, update the workflow and rerun the preflight check locally before tagging. The Release workflow now fails early if it detects the stale `pyinstaller/src/serdiff/gui_runner.py` path anywhere in the repository to prevent macOS packaging regressions.
 
 ## pipx (recommended)
 
@@ -92,7 +92,7 @@ ser-diff doctor
    git push origin vX.Y.Z
    ```
 
-4. GitHub Actions builds and uploads the Windows, macOS, and Linux GUI zips (`SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, `SER-Diff-Linux.zip`) to the release. Each matrix job sets `fail-fast: false`, so other platforms continue even if one build fails.
+4. GitHub Actions builds and uploads the Windows, macOS, and Linux GUI zips (`SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, `SER-Diff-Linux.zip`) to the release. Each matrix job sets `fail-fast: false`, so other platforms continue even if one build fails. The preflight guard also blocks the run if the deprecated `pyinstaller/src/serdiff/gui_runner.py` reference resurfaces, ensuring the matrix keeps building against `src/serdiff/gui_runner.py`.
 5. Validate the assets on the Releases page and update documentation links if the organization or repository name changes.
 
 ### Troubleshooting
