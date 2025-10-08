@@ -106,6 +106,84 @@ jobs:
             echo "archive=SER-Diff-Linux.zip" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Verify Windows archive contents
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+import zipfile
+
+zip_path = "SER-Diff-Windows.zip"
+expected = {"SER-Diff.exe", "ser-diff.exe", "README_RUN_ME.txt"}
+
+with zipfile.ZipFile(zip_path) as zf:
+    top_level = set()
+    for info in zf.infolist():
+        name = info.filename.rstrip("/")
+        if not name:
+            continue
+        top_level.add(name.split("/", 1)[0])
+
+missing = sorted(expected - top_level)
+if missing:
+    raise SystemExit(f"Missing from {zip_path}: {', '.join(missing)}")
+
+print(f"{zip_path} contains required entries: {', '.join(sorted(expected))}")
+PY
+
+      - name: Verify macOS archive contents
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+import zipfile
+
+zip_path = "SER-Diff-macOS.zip"
+expected = {"SER-Diff.app", "ser-diff", "README_RUN_ME.txt"}
+
+with zipfile.ZipFile(zip_path) as zf:
+    top_level = set()
+    for info in zf.infolist():
+        name = info.filename.rstrip("/")
+        if not name:
+            continue
+        top_level.add(name.split("/", 1)[0])
+
+missing = sorted(expected - top_level)
+if missing:
+    raise SystemExit(f"Missing from {zip_path}: {', '.join(missing)}")
+
+print(f"{zip_path} contains required entries: {', '.join(sorted(expected))}")
+PY
+
+      - name: Verify Linux archive contents
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+import zipfile
+
+zip_path = "SER-Diff-Linux.zip"
+expected = {"ser-diff-gui", "ser-diff", "README_RUN_ME.txt"}
+
+with zipfile.ZipFile(zip_path) as zf:
+    top_level = set()
+    for info in zf.infolist():
+        name = info.filename.rstrip("/")
+        if not name:
+            continue
+        top_level.add(name.split("/", 1)[0])
+
+missing = sorted(expected - top_level)
+if missing:
+    raise SystemExit(f"Missing from {zip_path}: {', '.join(missing)}")
+
+print(f"{zip_path} contains required entries: {', '.join(sorted(expected))}")
+PY
+
       - name: Upload assets to Release
         uses: softprops/action-gh-release@v2
         with:
