@@ -81,7 +81,17 @@ jobs:
             cp dist/SER-Diff.exe upload/win/
             cp dist/ser-diff.exe upload/win/
             printf "Double-click SER-Diff.exe (GUI). Put XMLs in exports/. Reports appear in reports/.\nCLI: ser-diff.exe (advanced).\n" > upload/win/README_RUN_ME.txt
-            powershell -command "Compress-Archive -Path upload\\win\\* -DestinationPath SER-Diff-Windows.zip"
+            python - <<'PY'
+import pathlib
+import zipfile
+
+root = pathlib.Path("upload/win")
+archive = pathlib.Path("SER-Diff-Windows.zip")
+
+with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
+    for item in root.iterdir():
+        zf.write(item, arcname=item.name)
+PY
             echo "archive=SER-Diff-Windows.zip" >> "$GITHUB_OUTPUT"
 
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
