@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .detect import ROW_INDEX_FIELD
-from .diff import DiffConfig
+from serdiff.detect import ROW_INDEX_FIELD
+from serdiff.diff import DiffConfig
 
 
 @dataclass(frozen=True)
