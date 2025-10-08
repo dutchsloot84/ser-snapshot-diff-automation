@@ -12,11 +12,11 @@ from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import __version__
-from .config import LoadedConfig, load_config
-from .detect import ROW_INDEX_FIELD, detect_schema, infer_fields, infer_key_fields, probe_xml
-from .diff import DiffConfig, DiffResult, diff_files, write_reports
-from .presets import get_preset
+from serdiff import __version__
+from serdiff.config import LoadedConfig, load_config
+from serdiff.detect import ROW_INDEX_FIELD, detect_schema, infer_fields, infer_key_fields, probe_xml
+from serdiff.diff import DiffConfig, DiffResult, diff_files, write_reports
+from serdiff.presets import get_preset
 
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1

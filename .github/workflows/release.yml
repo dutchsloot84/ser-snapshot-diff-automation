@@ -1,4 +1,4 @@
-name: Release
+name: Release GUI & CLI Binaries
 
 on:
   push:
@@ -71,7 +71,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          rm -rf build dist
+          rm -rf build dist upload
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             pyinstaller --onefile --windowed -n "SER-Diff" src/serdiff/gui_runner.py
             pyinstaller --onefile --console -n "ser-diff" src/serdiff/cli.py
@@ -79,7 +79,7 @@ jobs:
             mkdir -p upload/win
             cp dist/SER-Diff.exe upload/win/
             cp dist/ser-diff.exe upload/win/
-            printf "GUI: SER-Diff.exe\nCLI: ser-diff.exe\n" > upload/win/README_RUN_ME.txt
+            printf "GUI: SER-Diff.exe (double-click)\nCLI: ser-diff.exe (Command Prompt)\n" > upload/win/README_RUN_ME.txt
             powershell -command "Compress-Archive -Path upload\\win\\* -DestinationPath SER-Diff-Windows.zip"
             echo "archive=SER-Diff-Windows.zip" >> "$GITHUB_OUTPUT"
 
@@ -90,7 +90,7 @@ jobs:
             mkdir -p upload/mac
             cp -R "dist/SER-Diff.app" upload/mac/
             cp "dist/ser-diff" upload/mac/
-            printf "GUI: SER-Diff.app (Gatekeeper may prompt)\nCLI: ./ser-diff\n" > upload/mac/README_RUN_ME.txt
+            printf "GUI: SER-Diff.app (right-click → Open on first run)\nCLI: ./ser-diff\n" > upload/mac/README_RUN_ME.txt
             (cd upload/mac && zip -r ../../SER-Diff-macOS.zip .)
             echo "archive=SER-Diff-macOS.zip" >> "$GITHUB_OUTPUT"
 
@@ -110,3 +110,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.package.outputs.archive }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

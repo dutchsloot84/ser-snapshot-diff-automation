@@ -23,7 +23,7 @@
 ## GUI Runner
 
 1. Download the latest "SER Diff" GUI zip for your platform from [GitHub Releases](https://github.com/ser-projects/ser-snapshot-diff-automation/releases).
-2. Extract the archive and double-click the bundled binary (`SER-Diff.exe`, `SER-Diff.app`, or `ser-diff-gui`).
+2. Extract the archive and double-click the bundled binary (`SER-Diff.exe`, `SER-Diff.app`, or `ser-diff-gui`). Each zip also ships the CLI companion (`ser-diff.exe` or `ser-diff`) plus a quick README.
 3. Choose BEFORE and AFTER XML exports. The Jira ID field is automatically pre-filled if `.serdiff.toml/.yaml/.json` is present in the working directory.
 4. Click **Run Diff**. A timestamped folder beneath `~/SER-Diff-Reports/` is created, the primary report opens directly in your file explorer (with a folder fallback when required), and any guardrail warnings are highlighted in the GUI.
 5. Click **Check Environment** any time to run `ser-diff doctor` and confirm local prerequisites.
@@ -265,7 +265,7 @@ Integrate `ser-diff` into GitHub Actions or similar pipelines. Example excerpt:
 
 Guardrail breaches return exit code `2`. Configure CI to treat `2` as failure while still uploading artifacts for review.
 
-Tagged releases can reuse the workflow in [`.github/workflows/release.yml`](.github/workflows/release.yml) to build single-file binaries. The release job now invokes PyInstaller directly with `src/serdiff/gui_runner.py`, performs a preflight check for the script, and disables matrix fail-fast so Windows, macOS, and Linux builds succeed or fail independently.
+Tagged releases can reuse the workflow in [`.github/workflows/release.yml`](.github/workflows/release.yml) to build single-file binaries. The release job now invokes PyInstaller directly with `src/serdiff/gui_runner.py`, performs a preflight check for the script, disables matrix fail-fast so Windows, macOS, and Linux builds succeed or fail independently, and zips the GUI + CLI pair for each platform alongside a `README_RUN_ME.txt` helper.
 
 ## Standard Change SOP
 
@@ -293,6 +293,7 @@ The HTML report embeds canonical JSON safely: `</` sequences are escaped and Uni
 - **Duplicate keys**: Auto Mode extends composite keys; review `ser-diff explain` output for candidate fields.
 - **Unexpected namespaces**: combine `--strip-ns` with explicit `--record-localname` or configure via `.serdiff.toml`.
 - **Windows paths**: quote paths with spaces and prefer PowerShell for better UTF-8 handling; Git Bash works with forward slashes.
+- **`ImportError: attempted relative import with no known parent package`**: ensure you launched the CLI from the packaged zip (contains the fixed absolute imports) or upgrade to the latest release.
 
 ## Development
 
@@ -328,7 +329,7 @@ Artifacts appear under `dist/` ready to zip and share (`SER-Diff.exe`, `SER-Diff
    git push origin vX.Y.Z
    ```
 
-4. GitHub Actions uploads `SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, and `SER-Diff-Linux.zip` to the release. Each job fails early if `src/serdiff/gui_runner.py` is missing, and the matrix keeps running even if one OS fails. Verify the assets and update README links if the repository location changes.
+4. GitHub Actions uploads `SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, and `SER-Diff-Linux.zip` to the release. Each archive contains the GUI binary, CLI binary, and `README_RUN_ME.txt`. Jobs fail early if `src/serdiff/gui_runner.py` is missing, and the matrix keeps running even if one OS fails. Verify the assets and update README links if the repository location changes.
 
 Optional hooks:
 
