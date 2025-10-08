@@ -1,5 +1,6 @@
 """Ensure the GUI entrypoint imports without side effects."""
 
+
 def test_gui_import_smoke(monkeypatch) -> None:  # pragma: no cover - import smoke
     """Importing the GUI runner should succeed even in headless mode."""
 
