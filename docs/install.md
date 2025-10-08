@@ -42,7 +42,19 @@ pyinstaller --onefile --windowed -n "SER-Diff" src/serdiff/gui_runner.py
 pyinstaller --onefile --windowed -n "ser-diff-gui" src/serdiff/gui_runner.py
 ```
 
-PyInstaller places the finished binaries under `dist/`. Zip each platform output for distribution (the GitHub Release workflow names the archives `SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, and `SER-Diff-Linux.zip`). CI builds call PyInstaller directly with `src/serdiff/gui_runner.py`, so keep that path stable—if the script moves, update the workflow and rerun the preflight check locally before tagging. The Release workflow now fails early if it detects the stale `pyinstaller/src/serdiff/gui_runner.py` path anywhere in the repository to prevent macOS packaging regressions.
+PyInstaller places the finished binaries under `dist/`. Zip each platform output for distribution (the GitHub Release workflow names the archives `SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, and `SER-Diff-Linux.zip`). CI builds call PyInstaller directly with the GUI entrypoint `src/serdiff/gui_runner.py`, so keep that path stable—if the script moves, update the workflow and rerun the preflight check locally before tagging.
+
+### Build CLI locally with PyInstaller
+
+The console build shares the same editable install. Run PyInstaller against the CLI entrypoint (no `-m` flag) to mirror CI:
+
+```bash
+pyinstaller --onefile --console -n "ser-diff" src/serdiff/cli.py
+```
+
+On Windows the output is `dist/ser-diff.exe`; on macOS/Linux it is `dist/ser-diff`. Package it alongside the GUI binary for releases.
+
+The Release workflow now fails early if it detects missing entrypoint scripts or the stale `pyinstaller/src/serdiff/gui_runner.py` path anywhere in the repository, ensuring both binaries continue to build from `src/serdiff/gui_runner.py` and `src/serdiff/cli.py`.
 
 ## pipx (recommended)
 
@@ -92,7 +104,7 @@ ser-diff doctor
    git push origin vX.Y.Z
    ```
 
-4. GitHub Actions builds and uploads the Windows, macOS, and Linux GUI zips (`SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, `SER-Diff-Linux.zip`) to the release. Each matrix job sets `fail-fast: false`, so other platforms continue even if one build fails. The preflight guard also blocks the run if the deprecated `pyinstaller/src/serdiff/gui_runner.py` reference resurfaces, ensuring the matrix keeps building against `src/serdiff/gui_runner.py`.
+4. GitHub Actions builds and uploads the Windows, macOS, and Linux zips—each bundle now contains both GUI (`SER-Diff.exe`/`.app`/`ser-diff-gui`) and CLI (`ser-diff(.exe)`) binaries alongside a README (`SER-Diff-Windows.zip`, `SER-Diff-macOS.zip`, `SER-Diff-Linux.zip`). Each matrix job sets `fail-fast: false`, so other platforms continue even if one build fails. The preflight guard blocks the run if the entrypoint scripts are missing or the deprecated `pyinstaller/src/serdiff/gui_runner.py` reference resurfaces, ensuring the matrix keeps building against `src/serdiff/gui_runner.py` and `src/serdiff/cli.py`.
 5. Validate the assets on the Releases page and update documentation links if the organization or repository name changes.
 
 ### Troubleshooting
