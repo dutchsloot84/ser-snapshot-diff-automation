@@ -96,7 +96,7 @@ jobs:
 
       - name: Build single-file binary
         run: |
-          pyinstaller --name ser-diff --onefile --console -p src -m serdiff.cli
+          pyinstaller --onefile --console -n "ser-diff" src/serdiff/cli.py
         shell: bash
 
       - name: Rename artifact

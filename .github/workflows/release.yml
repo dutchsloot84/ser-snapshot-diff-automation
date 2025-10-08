@@ -33,83 +33,80 @@ jobs:
       - name: Run tests
         run: pytest -q
 
-  package-gui:
-    name: Build GUI binary
+  build:
+    name: Build ${{ matrix.os }}
     needs: tests
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-latest
-            archive: SER-Diff-Linux.zip
-            binary_name: ser-diff-gui
-          - os: macos-latest
-            archive: SER-Diff-macOS.zip
-            binary_name: SER-Diff
-          - os: windows-latest
-            archive: SER-Diff-Windows.zip
-            binary_name: SER-Diff
+        os: [windows-latest, macos-latest, ubuntu-latest]
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
 
-      - name: Install build dependencies
-        run: python -m pip install --upgrade pip && pip install -e .[dev] pyinstaller
+      - name: Install build deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev] pyinstaller
 
-      - name: Preflight: ensure GUI script exists
+      - name: Preflight: verify entrypoint scripts & guard stale refs
         shell: bash
         run: |
           set -e
-          test -f "src/serdiff/gui_runner.py" || { echo "ERROR: src/serdiff/gui_runner.py not found"; exit 1; }
-          echo "OK: src/serdiff/gui_runner.py present"
+          test -f "src/serdiff/gui_runner.py" || { echo "::error::Missing src/serdiff/gui_runner.py"; exit 1; }
+          test -f "src/serdiff/cli.py" || { echo "::error::Missing src/serdiff/cli.py"; exit 1; }
+          if git grep -n "pyinstaller/src/serdiff/gui_runner.py" -- . ; then
+            echo "::error::Stale path 'pyinstaller/src/serdiff/gui_runner.py' found above. Fix references."
+            exit 1
+          fi
+          echo "Entrypoint scripts OK."
 
-      - name: Build GUI binary
+      - name: Build GUI & CLI binaries
+        id: package
         shell: bash
-        env:
-          ARCHIVE_NAME: ${{ matrix.archive }}
-          BINARY_NAME: ${{ matrix.binary_name }}
         run: |
           set -e
-          mkdir -p upload
+          rm -rf build dist
           if [[ "$RUNNER_OS" == "Windows" ]]; then
-            pyinstaller --onefile --windowed -n "$BINARY_NAME" src/serdiff/gui_runner.py
-            cp "dist/${BINARY_NAME}.exe" upload/
-            cat <<'EOF_WIN' > upload/README_RUN_ME.txt
-Double-click SER-Diff.exe
-Pick BEFORE/AFTER XML
-EOF_WIN
-            powershell -command "Compress-Archive -Path upload\* -DestinationPath ${ARCHIVE_NAME}"
+            pyinstaller --onefile --windowed -n "SER-Diff" src/serdiff/gui_runner.py
+            pyinstaller --onefile --console -n "ser-diff" src/serdiff/cli.py
+
+            mkdir -p upload/win
+            cp dist/SER-Diff.exe upload/win/
+            cp dist/ser-diff.exe upload/win/
+            printf "GUI: SER-Diff.exe\nCLI: ser-diff.exe\n" > upload/win/README_RUN_ME.txt
+            powershell -command "Compress-Archive -Path upload\\win\\* -DestinationPath SER-Diff-Windows.zip"
+            echo "archive=SER-Diff-Windows.zip" >> "$GITHUB_OUTPUT"
+
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            pyinstaller --onefile --windowed -n "$BINARY_NAME" src/serdiff/gui_runner.py
-            cp -R "dist/${BINARY_NAME}.app" upload/
-            cat <<'EOF_MAC' > upload/README_RUN_ME.txt
-Open SER-Diff.app (Gatekeeper may prompt)
-EOF_MAC
-            (cd upload && zip -r "../${ARCHIVE_NAME}" .)
+            pyinstaller --onefile --windowed -n "SER-Diff" src/serdiff/gui_runner.py
+            pyinstaller --onefile --console -n "ser-diff" src/serdiff/cli.py
+
+            mkdir -p upload/mac
+            cp -R "dist/SER-Diff.app" upload/mac/
+            cp "dist/ser-diff" upload/mac/
+            printf "GUI: SER-Diff.app (Gatekeeper may prompt)\nCLI: ./ser-diff\n" > upload/mac/README_RUN_ME.txt
+            (cd upload/mac && zip -r ../../SER-Diff-macOS.zip .)
+            echo "archive=SER-Diff-macOS.zip" >> "$GITHUB_OUTPUT"
+
           else
-            pyinstaller --onefile --windowed -n "$BINARY_NAME" src/serdiff/gui_runner.py
-            cp "dist/${BINARY_NAME}" upload/
-            cat <<'EOF_LINUX' > upload/README_RUN_ME.txt
-./ser-diff-gui
-EOF_LINUX
-            (cd upload && zip -r "../${ARCHIVE_NAME}" .)
+            pyinstaller --onefile --windowed -n "ser-diff-gui" src/serdiff/gui_runner.py
+            pyinstaller --onefile --console -n "ser-diff" src/serdiff/cli.py
+
+            mkdir -p upload/linux
+            cp dist/ser-diff-gui upload/linux/
+            cp dist/ser-diff upload/linux/
+            printf "GUI: ./ser-diff-gui\nCLI: ./ser-diff\n" > upload/linux/README_RUN_ME.txt
+            (cd upload/linux && zip -r ../../SER-Diff-Linux.zip .)
+            echo "archive=SER-Diff-Linux.zip" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Upload workflow artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.archive }}
-          path: ${{ matrix.archive }}
-          if-no-files-found: error
-
-      - name: Upload release asset
+      - name: Upload assets to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ matrix.archive }}
+          files: ${{ steps.package.outputs.archive }}
